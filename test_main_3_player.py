@@ -16,6 +16,7 @@ from py_rule_based import rule_based_json_code
 from deep_Q_learning import value_iteration, extract_optimal_Q_table
 from copy import deepcopy
 import gc
+from preprocessing_data_3_player import create_polars_table_of_state_action_return_encode
 
 
 class Bot_Simulation(object):
@@ -244,8 +245,10 @@ class Bot_Simulation(object):
         return env
 
 
-def write_data_to_file(src_data, idx_game, optimal_Q_table, 
-                       player_card, who_play_first):
+def write_data_to_file(src_data, idx_game, df_table):
+    if len(df_table) == 0:
+        return
+
     computer_name = platform.node()
     computer_name = computer_name.replace("-", "")
 
@@ -254,16 +257,10 @@ def write_data_to_file(src_data, idx_game, optimal_Q_table,
 
     process_id = os.getpid()
 
-    filename = f"TLMN_{formatted_now}_{computer_name}_{process_id}_{idx_game}.pkl"
+    filename = f"TLMN_{formatted_now}_{computer_name}_{process_id}_{idx_game}.parquet"
     path_to_file = os.path.join(src_data, filename)
-
-    game_data = {
-        "Q_table": optimal_Q_table,
-        "player_card": player_card,
-        "who_play_first": who_play_first,
-    }
-    with open(path_to_file, "wb") as f:
-        pickle.dump(game_data, f, protocol=pickle.HIGHEST_PROTOCOL)
+    
+    df_table.write_parquet(path_to_file)
 
 def calculate_optimal_Q_table(env):
     observation_space = set(env.keys()) | {
@@ -297,11 +294,17 @@ def run_bot_simulation(src_data):
             env = bot_simulation.build_env(deepcopy(player_card), who_play_first)
             optimal_Q_table = calculate_optimal_Q_table(env)
             del env; gc.collect()
-            write_data_to_file(src_data, idx_game, optimal_Q_table, 
-                            player_card, who_play_first)
+            game_data = {
+                "Q_table": optimal_Q_table,
+                "player_card": player_card,
+                "who_play_first": who_play_first,
+            }
+            df_table = create_polars_table_of_state_action_return_encode(game_data)
             del optimal_Q_table; gc.collect()
-        except:
-            print(f"\nThe ERRRRRRRROOOOOOOOOOOORRRRRRRRRR occurs")
+            write_data_to_file(src_data, idx_game, df_table)
+            del df_table; gc.collect()
+        except Exception as e:
+            print(f"\nThe ERRRRRRRROOOOOOOOOOOORRRRRRRRRR occurs:", e)
             print("Player1 cards: ", end=""); Card.print_pretty_cards(player_card[1])
             print("Player2 cards: ", end=""); Card.print_pretty_cards(player_card[2])
             print("Player3 cards: ", end=""); Card.print_pretty_cards(player_card[3])
@@ -309,7 +312,7 @@ def run_bot_simulation(src_data):
 
 if __name__ == "__main__":
     n_process = psutil.cpu_count(logical=False) - 1
-    src_data = r"\\10.5.10.44\data_see_opponent_card_3_players"
+    src_data = r"\\10.5.10.44\data_see_opponent_card_3_players_preprocess_2"
 
     print(f"The number of running process: {n_process}")
     print(f"Finding src_data status: {os.path.exists(src_data)}")

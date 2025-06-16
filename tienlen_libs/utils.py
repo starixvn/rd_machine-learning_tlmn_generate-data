@@ -8,6 +8,18 @@ class Utils:
     mapping_len_to_type = {2: ComboType.PAIR, 3: ComboType.TRIPLET, 4: ComboType.QUARTET}
     mapping_len_to_double_sequence = {6: ComboType.DOUBLE_SEQUENCE_THREE, 
                                       8: ComboType.DOUBLE_SEQUENCE_FOUR}
+    dict_combo_type_to_int = {
+        ComboType.PASS: 0,
+        ComboType.SINGLE: 1,
+        ComboType.SINGLE_DEUCE: 2,
+        ComboType.PAIR: 3,
+        ComboType.PAIR_DEUCE: 4,
+        ComboType.TRIPLET: 5,
+        ComboType.QUARTET: 6,
+        ComboType.DOUBLE_SEQUENCE_THREE: 7,
+        ComboType.DOUBLE_SEQUENCE_FOUR: 8,
+        ComboType.SEQUENCE: 9,
+    }
 
     def __init__(self):
 
@@ -53,6 +65,14 @@ class Utils:
                 assert 2 * n_unique_rank == n_cards, \
                     f"Invalid number of unique rank: {n_unique_rank} for {cards}"
                 return Utils.mapping_len_to_double_sequence[n_cards]
+            
+    @classmethod
+    def get_int_combo_type(cls, cards):
+        combo_type = cls.get_combo_type(cards)
+        if combo_type == ComboType.SEQUENCE:
+            return cls.dict_combo_type_to_int[combo_type] + (len(cards) - 3)
+        else:
+            return cls.dict_combo_type_to_int[combo_type]
 
     @staticmethod
     def stats_frequency_of_card(board):
