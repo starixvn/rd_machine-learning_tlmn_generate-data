@@ -225,7 +225,7 @@ class Bot_Simulation(object):
             self.update_player_actions_card(next_player_actions_card, next_player_action)
             next_state = self.encode_state(next_player_card, next_player_action, next_player_actions_card, 
                                         next_player_skip, next_turn)
-            reward = self.reward.get_reward_3_player(next_player_card)
+            reward = self.reward.get_reward_more_than_2_players(next_player_card)
             env[state][valid_action_player1] = (next_state, reward)
             self.recursive_depth_first_search(env, next_player_card, next_player_action, next_player_actions_card, 
                                               next_player_skip, next_turn)

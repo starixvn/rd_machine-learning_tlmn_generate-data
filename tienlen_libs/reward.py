@@ -67,19 +67,20 @@ class Reward(object):
         else:
             # return 0
             raise ValueError("Invalid result for reward!!!")
-        
-    def get_reward_3_player(self, player_card):
+                
+    def get_reward_more_than_2_players(self, player_card):
         len_player1_card = len(player_card[1])
-        len_player2_card = len(player_card[2])
-        len_player3_card = len(player_card[3])
+        other_player_lens = [len(player_card[player_id]) 
+                            for player_id in player_card if player_id != 1]
+        assert len(other_player_lens) == len(player_card) - 1
 
         if len_player1_card == 0:
-            assert len_player2_card > 0 and len_player3_card > 0
+            assert all(l > 0 for l in other_player_lens)
             return 1
-        elif len_player2_card == 0 or len_player3_card == 0:
+        elif any(l == 0 for l in other_player_lens):
             assert len_player1_card > 0
-            assert len_player2_card + len_player3_card == max(len_player2_card, len_player3_card)
+            assert sum([l == 0 for l in other_player_lens]) == 1
             return -1
         else:
-            assert len_player1_card > 0 and len_player2_card > 0 and len_player3_card > 0
+            assert len_player1_card > 0 and all(l > 0 for l in other_player_lens)
             return 0
