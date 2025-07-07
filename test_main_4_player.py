@@ -13,7 +13,7 @@ import numpy as np
 import random
 from py_mini_racer import py_mini_racer
 from py_rule_based import rule_based_json_code
-from deep_Q_learning import value_iteration, extract_optimal_Q_table
+from deep_Q_learning import value_iteration_RAM_optimize, extract_optimal_Q_table_RAM_optimize
 from copy import deepcopy
 import gc
 from preprocessing_data_4_player import create_polars_table_of_state_action_return_encode
@@ -176,29 +176,21 @@ class Bot_Simulation(object):
                 ignore = True
         return player_card, player_action, player_skip, turn
     
-    def update_player_actions_card(self, player_actions_card, player_action):
-        for player_id in range(1, self.n_player + 1):
-            player_id_action = player_action[player_id]
-            if player_id_action != self.skip_int_encode and len(player_id_action) > 0:
-                player_actions_card[player_id] = player_actions_card[player_id] + list(player_id_action)
-                player_actions_card[player_id].sort()
-
-    def encode_state(self, player_card, player_action, player_actions_card, player_skip, turn):
+    def encode_state(self, player_card, player_action, player_skip, turn):
         player_card_encode = tuple(tuple(player_card[i]) for i in range(1, self.n_player + 1))
         player_action_encode = tuple(
             tuple(player_action[i]) if player_action[i] != self.skip_int_encode else self.skip_int_encode
             for i in range(2, self.n_player + 1)
         )
-        # player_actions_card_encode = tuple(tuple(player_actions_card[i]) for i in range(1, self.n_player + 1))
         # player_skip_encode = tuple(player_skip[i] for i in range(1, self.n_player + 1))
         state = (player_card_encode, player_action_encode, turn)
         return state
 
-    def recursive_depth_first_search(self, env, player_card, player_action, player_actions_card, player_skip, turn):
+    def recursive_depth_first_search(self, env, player_card, player_action, player_skip, turn):
         if any(len(player_card[i]) == 0 for i in range(1, self.n_player + 1)):
             assert sum(len(x) == 0 for x in player_card.values()) == 1
             return
-        state = self.encode_state(player_card, player_action, player_actions_card, player_skip, turn)
+        state = self.encode_state(player_card, player_action, player_skip, turn)
         if state in env: return
         
         if not player_skip[1]:
@@ -210,7 +202,6 @@ class Bot_Simulation(object):
         for valid_action_player1 in list_valid_action_player1:
             next_player_card = deepcopy(player_card)
             next_player_action = deepcopy(player_action)
-            next_player_actions_card = deepcopy(player_actions_card)
             next_player_skip = deepcopy(player_skip)
             next_turn = turn
 
@@ -222,26 +213,22 @@ class Bot_Simulation(object):
 
             next_player_card, next_player_action, next_player_skip, next_turn = self.run_round_for_other_players(
                                                 next_player_card, next_player_action, next_player_skip, next_turn, ignore)
-            self.update_player_actions_card(next_player_actions_card, next_player_action)
-            next_state = self.encode_state(next_player_card, next_player_action, next_player_actions_card, 
-                                        next_player_skip, next_turn)
+            
+            next_state = self.encode_state(next_player_card, next_player_action, next_player_skip, next_turn)
             reward = self.reward.get_reward_more_than_2_players(next_player_card)
             env[state][valid_action_player1] = (next_state, reward)
-            self.recursive_depth_first_search(env, next_player_card, next_player_action, next_player_actions_card, 
-                                              next_player_skip, next_turn)
+            self.recursive_depth_first_search(env, next_player_card, next_player_action, next_player_skip, next_turn)
  
     def build_env(self, player_card, who_play_first):
         player_action = {i: [] for i in range(1, self.n_player + 1)}
-        player_actions_card = {i: [] for i in range(1, self.n_player + 1)}
         player_skip = self.reset_player_skip()
         turn = who_play_first
         if who_play_first != 1:
             player_card, player_action, player_skip, turn = self.run_round_for_other_players(
                                         player_card, player_action, player_skip, turn, False, player_id_start=who_play_first)
-            self.update_player_actions_card(player_actions_card, player_action)
 
         env = defaultdict(dict)
-        self.recursive_depth_first_search(env, player_card, player_action, player_actions_card, player_skip, turn)
+        self.recursive_depth_first_search(env, player_card, player_action, player_skip, turn)
         return env
 
 
@@ -263,13 +250,8 @@ def write_data_to_file(src_data, idx_game, df_table):
     df_table.write_parquet(path_to_file)
 
 def calculate_optimal_Q_table(env):
-    observation_space = set(env.keys()) | {
-        next_state for state_actions in env.values() 
-        for next_state, _ in state_actions.values()
-    }
-    # print(f"Total states in observation space: {len(observation_space):,}")
-    value_table = value_iteration(env, observation_space)
-    optimal_Q_table = extract_optimal_Q_table(value_table, env, observation_space)
+    value_table = value_iteration_RAM_optimize(env)
+    optimal_Q_table = extract_optimal_Q_table_RAM_optimize(value_table, env)
     return optimal_Q_table
 
 def run_bot_simulation(src_data):
@@ -303,7 +285,7 @@ def run_bot_simulation(src_data):
                 "who_play_first": who_play_first,
             }
             df_table = create_polars_table_of_state_action_return_encode(game_data)
-            del optimal_Q_table; gc.collect()
+            del optimal_Q_table, game_data; gc.collect()
             write_data_to_file(src_data, idx_game, df_table)
             del df_table; gc.collect()
         except Exception as e:
@@ -313,7 +295,7 @@ def run_bot_simulation(src_data):
             print(f"Player {who_play_first} plays first")
 
 if __name__ == "__main__":
-    n_process = psutil.cpu_count(logical=False) - 2
+    n_process = psutil.cpu_count(logical=False) - 4
     src_data = r"\\10.5.10.44\data_see_opponent_card_4_players"
 
     print(f"The number of running process: {n_process}")
