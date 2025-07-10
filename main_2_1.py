@@ -13,6 +13,7 @@ import random
 from py_mini_racer import py_mini_racer
 from py_rule_based import rule_based_json_code
 from math import comb
+from itertools import combinations
 
 
 class Bot_Simulation(object):
@@ -207,16 +208,21 @@ def generate_random_player1_card_from_deck_remain(deck_remain, len_player1_card,
 
     natural_win = NaturalWin()
     deck_remain_shuffled = list(deck_remain)
-    count = 0
-    n_iter = min(1000, comb(len(deck_remain), len_player1_card))
-    while count < n_iter:
-        np.random.shuffle(deck_remain_shuffled)
-        player1_card = deck_remain_shuffled[:len_player1_card]
-        if natural_win.detect_natural_win(player1_card + player1_action_cards): 
-            continue
-        player1_card.sort()
-        yield player1_card
-        count += 1
+    max_n_iter = 1000
+    n_iter = min(max_n_iter, comb(len(deck_remain), len_player1_card))
+    if n_iter == max_n_iter:
+        for _ in range(n_iter):
+            np.random.shuffle(deck_remain_shuffled)
+            player1_card = deck_remain_shuffled[:len_player1_card]
+            if natural_win.detect_natural_win(player1_card + player1_action_cards): 
+                continue
+            yield sorted(player1_card)
+    else:
+        for player1_card in combinations(deck_remain, len_player1_card):
+            player1_card = list(player1_card)
+            if natural_win.detect_natural_win(player1_card + player1_action_cards): 
+                continue
+            yield sorted(player1_card)
 
 def generate_average_max_reward_for_all_actions_of_state(state, bot_simulation, origin_player2_card):
     _, _, _, _, deck_remain, len_player1_card = state
@@ -256,7 +262,7 @@ def run_bot_simulation(src_data):
         save_the_initial_game_info(path_to_folder, player1_card, player2_card, who_play_first)
         for state_index, state in enumerate(set_states):
             assert type(state[-1]) == int
-            if state[-1] not in [4, 3, 2, 1]: continue
+            if state[-1] not in [2, 1]: continue
             start_time_cal = time.time()
             actions_average_max_reward = generate_average_max_reward_for_all_actions_of_state(state, 
                                                                         bot_simulation, player2_card)
@@ -269,8 +275,8 @@ def run_bot_simulation(src_data):
 
 
 if __name__ == "__main__":
-    n_process = psutil.cpu_count(logical=False) - 1
-    src_data = r"\\10.5.10.44\data_4_1"
+    n_process = psutil.cpu_count(logical=False)
+    src_data = r"\\10.5.10.44\data_2_1"
 
     print(f"The number of running process: {n_process}")
     print(f"Finding src_data status: {os.path.exists(src_data)}")
