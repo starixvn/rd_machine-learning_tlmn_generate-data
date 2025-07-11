@@ -1,20 +1,20 @@
 from .utils import Utils
 from .action_generation import ActionGenerator
 
-
 class Reward(object):
     def __init__(self):
-        self.action_generator = ActionGenerator()
         self.utils = Utils()
-
-    def __count_n_quartet(self, frequency_stats):
+    
+    @staticmethod
+    def count_n_quartet(frequency_stats):
         n_quartet = 0
         for cards in frequency_stats.values():
             if len(cards) == 4:
                 n_quartet += 1
         return n_quartet
     
-    def __count_n_double_sequence_three_and_four(self, frequency_stats):
+    @staticmethod
+    def count_n_double_sequence_three_and_four(frequency_stats):
         n_double_sequence_three = 0
         
         for double_sequence in ActionGenerator.get_double_sequence_three_and_four(frequency_stats):
@@ -25,6 +25,42 @@ class Reward(object):
             
         return n_double_sequence_three, 0
     
+    @staticmethod
+    def count_n_long_sequence(frequency_stats, expected_len_long_sequence):
+        n_long_sequence = 0
+        for sequence in ActionGenerator.get_only_sequence(frequency_stats):
+            if len(sequence) == expected_len_long_sequence:
+                n_long_sequence += 1
+        return n_long_sequence
+    
+    @staticmethod
+    def detect_quartet_in_card(player_card):
+        frequency_stats = Utils.stats_frequency_of_card(player_card)
+        n_quartet = Reward.count_n_quartet(frequency_stats)
+        assert n_quartet <= 1
+        return (n_quartet > 0)
+    
+    @staticmethod
+    def detect_double_sequence_three_in_card(player_card):
+        frequency_stats = Utils.stats_frequency_of_card(player_card)
+        n_double_sequence_three, _ = Reward.count_n_double_sequence_three_and_four(frequency_stats)
+        return (n_double_sequence_three > 0)
+    
+    @staticmethod
+    def detect_double_sequence_four_in_card(player_card):
+        frequency_stats = Utils.stats_frequency_of_card(player_card)
+        _, n_double_sequence_four = Reward.count_n_double_sequence_three_and_four(frequency_stats)
+        return (n_double_sequence_four > 0)
+    
+    @staticmethod
+    def detect_long_sequence_in_card(player_card, expected_len_long_sequence):
+        frequency_stats = Utils.stats_frequency_of_card(player_card)
+        n_long_sequence = Reward.count_n_long_sequence(frequency_stats, expected_len_long_sequence)
+        if any(Reward.count_n_long_sequence(frequency_stats, exceed_expected_len) > 0 
+            for exceed_expected_len in range(expected_len_long_sequence + 1, 13)):
+            n_long_sequence = 0
+        return (n_long_sequence > 0)
+
     def get_penalized_deuce_quartet_double_sequence(self, player_card):
         assert list(player_card) == sorted(player_card)
         assert len(player_card) > 0
@@ -42,11 +78,11 @@ class Reward(object):
         
         if len_player_card >= 4:
             frequency_stats = self.utils.stats_frequency_of_card(player_card)
-            penalized += (8 * self.__count_n_quartet(frequency_stats)) 
+            penalized += (8 * Reward.count_n_quartet(frequency_stats)) 
         
             if len_player_card >= 6:
                 n_double_sequence_three, n_double_sequence_four = \
-                    self.__count_n_double_sequence_three_and_four(frequency_stats)
+                    Reward.count_n_double_sequence_three_and_four(frequency_stats)
                 penalized += (4 * n_double_sequence_three)
                 penalized += (8 * n_double_sequence_four)
 
