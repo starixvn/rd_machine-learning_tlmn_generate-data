@@ -265,6 +265,7 @@ def run_bot_simulation(src_data):
         for state_index, state in enumerate(set_states):
             # if state[-1] not in [2, 1]: continue
             assert set(state[0]).issubset(set(player2_card))
+            assert len(player2_card) == 13
             if not func_detect_special_case_in_card(state[0]): continue
             start_time_cal = time.time()
             actions_average_max_reward = generate_average_max_reward_for_all_actions_of_state(state, 
@@ -280,7 +281,7 @@ def run_bot_simulation(src_data):
 
 if __name__ == "__main__":
     n_process = psutil.cpu_count(logical=False)
-    src_data = r"C:\Users\justin.pham\Downloads\tmp"
+    src_data = r"\\10.5.10.44\data_special_case"
 
     print(f"The number of running process: {n_process}")
     print(f"Finding src_data status: {os.path.exists(src_data)}")
