@@ -244,7 +244,8 @@ def generate_average_max_reward_for_all_actions_of_state(state, bot_simulation, 
 def run_bot_simulation(src_data):
     bot_simulation = Bot_Simulation()
     natural_win = NaturalWin()
-    func_detect_special_case_in_card = Reward.detect_quartet_in_card
+    func_detect_special_case_in_card = Reward.detect_long_sequence_in_card
+    expected_len_sequence = 7
 
     for idx_game in range(10**6):
         full_deck = list(range(52))
@@ -254,7 +255,7 @@ def run_bot_simulation(src_data):
         if natural_win.detect_natural_win(player1_card) or natural_win.detect_natural_win(player2_card):
             # print("Natural Win Detected: SKIPPING this game!!!")
             continue
-        if not func_detect_special_case_in_card(player2_card): continue
+        if not func_detect_special_case_in_card(player2_card, expected_len_sequence): continue
         who_play_first = random.choice([1, 2])
         set_states = bot_simulation.build_set_states(player1_card, player2_card, who_play_first)
         # print("\nPlayer1 cards: ", end=""); Card.print_pretty_cards(player1_card)
@@ -266,7 +267,7 @@ def run_bot_simulation(src_data):
             # if state[-1] not in [2, 1]: continue
             assert set(state[0]).issubset(set(player2_card))
             assert len(player2_card) == 13
-            if not func_detect_special_case_in_card(state[0]): continue
+            if not func_detect_special_case_in_card(state[0], expected_len_sequence): continue
             start_time_cal = time.time()
             actions_average_max_reward = generate_average_max_reward_for_all_actions_of_state(state, 
                                                                         bot_simulation, player2_card)
