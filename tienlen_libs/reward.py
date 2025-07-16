@@ -1,7 +1,16 @@
 from .utils import Utils
 from .action_generation import ActionGenerator
+from .constant import ComboType
 
 class Reward(object):
+    BOMB_PENALTY = {
+        'BLACK_DEUCE': 2,
+        'RED_DEUCE': 4, 
+        ComboType.DOUBLE_SEQUENCE_THREE: 4,
+        ComboType.DOUBLE_SEQUENCE_FOUR: 8,
+        ComboType.QUARTET: 8
+    }
+
     def __init__(self):
         self.utils = Utils()
     
@@ -61,48 +70,48 @@ class Reward(object):
             n_long_sequence = 0
         return (n_long_sequence > 0)
 
-    def get_penalized_deuce_quartet_double_sequence(self, player_card):
+    @classmethod
+    def get_penalized_deuce_quartet_double_sequence(cls, player_card):
         assert list(player_card) == sorted(player_card)
         assert len(player_card) > 0
         len_player_card = len(player_card)
 
         penalized = 0    
         if 48 in player_card:
-            penalized += 2
+            penalized += cls.BOMB_PENALTY['BLACK_DEUCE']
         if 49 in player_card:
-            penalized += 2
+            penalized += cls.BOMB_PENALTY['BLACK_DEUCE']
         if 50 in player_card:
-            penalized += 4
+            penalized += cls.BOMB_PENALTY['RED_DEUCE']
         if 51 in player_card:
-            penalized += 4
+            penalized += cls.BOMB_PENALTY['RED_DEUCE']
         
         if len_player_card >= 4:
-            frequency_stats = self.utils.stats_frequency_of_card(player_card)
-            penalized += (8 * Reward.count_n_quartet(frequency_stats)) 
+            frequency_stats = Utils.stats_frequency_of_card(player_card)
+            n_quartet = cls.count_n_quartet(frequency_stats)
+            penalized += (cls.BOMB_PENALTY[ComboType.QUARTET] * n_quartet) 
         
             if len_player_card >= 6:
                 n_double_sequence_three, n_double_sequence_four = \
                     Reward.count_n_double_sequence_three_and_four(frequency_stats)
-                penalized += (4 * n_double_sequence_three)
-                penalized += (8 * n_double_sequence_four)
+                penalized += (cls.BOMB_PENALTY[ComboType.DOUBLE_SEQUENCE_THREE] * n_double_sequence_three)
+                penalized += (cls.BOMB_PENALTY[ComboType.DOUBLE_SEQUENCE_FOUR] * n_double_sequence_four)
 
         return penalized
     
-    def get_reward(self, player1_card, player2_card):
+    @classmethod
+    def get_reward(cls, player1_card, player2_card):
         len_player1_card = len(player1_card)
         len_player2_card = len(player2_card)
 
         if len_player2_card == 0:
-            # player1_penalized = self.get_penalized_deuce_quartet_double_sequence(player1_card)
-            # return len_player1_card + player1_penalized
-            return 1
+            player1_penalized = cls.get_penalized_deuce_quartet_double_sequence(player1_card)
+            return 1 + player1_penalized
         elif len_player1_card == 0:
-            # player2_penalized = self.get_penalized_deuce_quartet_double_sequence(player2_card)
-            # return -1 * (len_player2_card + player2_penalized)
-            return 0
+            player2_penalized = cls.get_penalized_deuce_quartet_double_sequence(player2_card)
+            return -1 * (1 + player2_penalized)
         else:
-            # return 0
-            raise ValueError("Invalid result for reward!!!")
+            return 0
                 
     def get_reward_more_than_2_players(self, player_card):
         len_player1_card = len(player_card[1])
@@ -120,3 +129,49 @@ class Reward(object):
         else:
             assert len_player1_card > 0 and all(l > 0 for l in other_player_lens)
             return 0
+
+    @classmethod    
+    def get_deuce_action_bomb_penalty(cls, deuce_action):
+        assert set(deuce_action).issubset({48, 49, 50, 51})
+        penalty = 0
+        for card in deuce_action:
+            if card in [48, 49]:
+                penalty += cls.BOMB_PENALTY['BLACK_DEUCE']
+            else:
+                penalty += cls.BOMB_PENALTY['RED_DEUCE']
+        return penalty
+
+    @classmethod
+    def get_bomb_beating_penalty(cls, previous_action, current_action):
+        if len(current_action) not in [4, 6, 8] or len(previous_action) == 0:
+            return 0
+        
+        previous_action_combo_type = Utils.get_combo_type(previous_action)
+        if previous_action_combo_type in [ComboType.SINGLE_DEUCE, ComboType.PAIR_DEUCE]:
+            return cls.get_deuce_action_bomb_penalty(previous_action)
+        return cls.BOMB_PENALTY.get(previous_action_combo_type, 0)
+    
+    @staticmethod
+    def cal_total_bomb_beating_reward(list_bomb_beat_reward):
+        total_reward = 0
+        i = 0
+        n = len(list_bomb_beat_reward)
+
+        while i < n:
+            if list_bomb_beat_reward[i] == 0:
+                i += 1
+                continue
+
+            temporary_reward, last_nonzero = 0, 0
+            while i < n:
+                cur_reward = list_bomb_beat_reward[i]
+                i += 1
+                if cur_reward != 0:
+                    temporary_reward += abs(cur_reward)
+                    last_nonzero = cur_reward
+                else:
+                    break
+            
+            assert last_nonzero != 0
+            total_reward += (temporary_reward * (1 if last_nonzero > 0 else -1))
+        return total_reward
