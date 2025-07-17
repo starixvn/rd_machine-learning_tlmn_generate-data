@@ -130,14 +130,6 @@ class Bot_Simulation(object):
                          tuple(next_actions_card_player2), tuple(next_player1_card))
             reward = self.reward.get_reward(next_player1_card, next_player2_card) + \
                     bomb_beat_2_versus_1 + bomb_beat_1_versus_2
-            if reward != 0:
-                print("\nNext player 1 card: ", end=""); Card.print_pretty_cards(next_player1_card)
-                print("Next player 2 card: ", end=""); Card.print_pretty_cards(next_player2_card)
-                print("Player 1 action: ", end=""); Card.print_pretty_cards(player1_action, end=" => ")
-                print("Player 2 action: ", end=""); Card.print_pretty_cards(player2_action, end=" => ")
-                print("Next player 1 action: ", end=""); Card.print_pretty_cards(next_player1_action)
-                print(f"next_bomb_beat_seq: {next_bomb_beat_seq}")
-                print(f"Reward: {reward}")
             env[state][player2_action] = (next_state, reward)
             self.recursive_depth_first_search(env, next_player1_card, next_player2_card, next_player1_action, 
                                               next_actions_card_player1, next_actions_card_player2, depth+1,
@@ -199,44 +191,44 @@ def run_bot_simulation(src_data):
     for idx_game in range(1):
         full_deck = list(range(52))
         np.random.shuffle(full_deck)
-        # player1_card = full_deck[:13]; player1_card.sort()
-        # player2_card = full_deck[13:26]; player2_card.sort()
-        player1_card = "3d 3h 6c 7s Td Th Jc Jd Qs Qh Kd Kh 2s"
-        player1_card = [Card.new(elem) for elem in player1_card.split()]
-        player2_card = "4s 5c 6s 7c 8d 9c 9d Ts Tc Js Jh 2d 2h"
-        player2_card = [Card.new(elem) for elem in player2_card.split()]
+        player1_card = full_deck[:13]; player1_card.sort()
+        player2_card = full_deck[13:26]; player2_card.sort()
+        # player1_card = "3d 3h 6c 7s Td Th Jc Jd Qs Qh Kd Kh 2s"
+        # player1_card = [Card.new(elem) for elem in player1_card.split()]
+        # player2_card = "4s 5c 6s 7c 8d 9c 9d Ts Tc Js Jh 2d 2h"
+        # player2_card = [Card.new(elem) for elem in player2_card.split()]
         print("\nPlayer1 cards: ", end=""); Card.print_pretty_cards(player1_card)
         print("Player2 cards: ", end=""); Card.print_pretty_cards(player2_card)
         if natural_win.detect_natural_win(player1_card) or natural_win.detect_natural_win(player2_card):
             # print("Natural Win Detected: SKIPPING this game!!!")
             continue
-        who_play_first = random.choice([1, 2])
-        # who_play_first = 2
+        # who_play_first = random.choice([1, 2])
+        who_play_first = 1
         env = bot_simulation.build_env(player1_card, player2_card, who_play_first)
         optimal_Q_table = calculate_optimal_Q_table(env)
         write_data_to_file(src_data, idx_game, optimal_Q_table, 
                            player1_card, player2_card, who_play_first)
 
 if __name__ == "__main__":
-    # n_process = 1
-    # src_data = r"C:\Users\justin.pham\Downloads\tmp"
+    n_process = 1
+    src_data = r"C:\Users\justin.pham\Downloads\tmp"
 
-    # print(f"The number of running process: {n_process}")
-    # print(f"Finding src_data status: {os.path.exists(src_data)}")
-    # if not os.path.exists(src_data):
-    #     os.makedirs(src_data)
-    # if sys.platform.startswith('win'):
-    #     freeze_support()
-    # with Pool(processes=n_process) as pool:
-    #     pool.map(run_bot_simulation, [src_data] * n_process)
+    print(f"The number of running process: {n_process}")
+    print(f"Finding src_data status: {os.path.exists(src_data)}")
+    if not os.path.exists(src_data):
+        os.makedirs(src_data)
+    if sys.platform.startswith('win'):
+        freeze_support()
+    with Pool(processes=n_process) as pool:
+        pool.map(run_bot_simulation, [src_data] * n_process)
 
-    data_path = r"C:\Users\justin.pham\Downloads\tmp\TLMN_2025-07-16-15-34-41_CP23002JUSTIN_7268_0.pkl"
-    with open(data_path, "rb") as f:
-        game_data = pickle.load(f)
-    Q_table = game_data["Q_table"]
-    distinct_Q_values = set()
-    for state, action_Q_table in Q_table.items():
-        for action, Q_value in action_Q_table.items():
-            distinct_Q_values.add(Q_value)
-    print(f"Total distinct Q values: {len(distinct_Q_values)}")
-    print(f"Distinct Q values: {sorted(distinct_Q_values)}")
+    # data_path = r"C:\Users\justin.pham\Downloads\tmp\TLMN_2025-07-16-15-34-41_CP23002JUSTIN_7268_0.pkl"
+    # with open(data_path, "rb") as f:
+    #     game_data = pickle.load(f)
+    # Q_table = game_data["Q_table"]
+    # distinct_Q_values = set()
+    # for state, action_Q_table in Q_table.items():
+    #     for action, Q_value in action_Q_table.items():
+    #         distinct_Q_values.add(Q_value)
+    # print(f"Total distinct Q values: {len(distinct_Q_values)}")
+    # print(f"Distinct Q values: {sorted(distinct_Q_values)}")
