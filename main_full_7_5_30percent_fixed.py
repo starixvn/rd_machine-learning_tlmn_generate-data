@@ -103,11 +103,15 @@ class Bot_Simulation(object):
             return
         if len(player1_card) == 0 or len(player2_card) == 0:
             reward = self.reward.get_reward(player1_card, player2_card) + cumsum_bomb_beat
+            if traverse_all == False:
+                assert reward <= reward_info["upper_limit"], \
+                    f'reward = {reward}, upper_limit = {reward_info["upper_limit"]}'
             reward_info["max"] = max(reward_info["max"], reward)
             return
         state = (tuple(player2_card), tuple(player1_action), tuple(actions_card_player1), 
                  tuple(actions_card_player2), tuple(deck_remain), len(player1_card))
-        if state in set_states: return
+        if state in set_states:
+            if traverse_all: return
         set_states.add(state)
         
         list_valid_action_player2 = self.action_generator.get_list_valid_action(player2_card, player1_action)
@@ -158,13 +162,18 @@ class Bot_Simulation(object):
             next_deck_remain = [card for card in deck_remain if card not in next_player1_action]
 
             reward_info = {"max": float('-inf'), 
-                           "upper_limit": self.cal_upper_limit_of_reward(player1_card)}
+                           "upper_limit": self.cal_upper_limit_of_reward(player1_card) + next_cumsum_bomb_beat}
             set_states = set()
-            self.recursive_depth_first_search_reward(set_states, next_player1_card, 
-                                                     next_player2_card, next_player1_action, 
-                                                     next_actions_card_player1, next_actions_card_player2,
-                                                     next_deck_remain, reward_info, traverse_all=False,
-                                                     cumsum_bomb_beat=next_cumsum_bomb_beat)
+            try:
+                self.recursive_depth_first_search_reward(set_states, next_player1_card, 
+                                                        next_player2_card, next_player1_action, 
+                                                        next_actions_card_player1, next_actions_card_player2,
+                                                        next_deck_remain, reward_info, traverse_all=False,
+                                                        cumsum_bomb_beat=next_cumsum_bomb_beat)
+            except Exception as e:
+                print(f"ERROR at {e}")
+                print(f"state = {state}")
+                print(f"player1_card = {player1_card}")
             actions_max_reward[player2_action] = reward_info["max"]
         return actions_max_reward
 
@@ -225,7 +234,7 @@ def generate_random_player1_card_from_deck_remain(deck_remain, len_player1_card,
 
     natural_win = NaturalWin()
     deck_remain_shuffled = list(deck_remain)
-    max_n_iter = 1000
+    max_n_iter = 4000
     n_iter = min(max_n_iter, comb(len(deck_remain), len_player1_card))
     if n_iter == max_n_iter:
         for _ in range(n_iter):
@@ -277,22 +286,22 @@ def run_bot_simulation(src_data):
         path_to_folder = create_folder_contain_one_game_data(src_data, idx_game)
         save_the_initial_game_info(path_to_folder, player1_card, player2_card, who_play_first)
         for state_index, state in enumerate(set_states):
-            # assert type(state[-1]) == int
-            # if state[-1] not in [2, 1]: continue
+            assert type(state[-1]) == int
+            if state[-1] not in [7, 6, 5]: continue
             start_time_cal = time.time()
             actions_average_max_reward = generate_average_max_reward_for_all_actions_of_state(state, 
                                                                         bot_simulation, player2_card)
             end_time_cal = time.time()
             if actions_average_max_reward is None: continue
-            print(f"\nstate: {state}")
-            print(f"{actions_average_max_reward}")
-            print(f"The time taken is: {end_time_cal-start_time_cal} seconds")
+            # print(f"\nstate: {state}")
+            # print(f"{actions_average_max_reward}")
+            # print(f"The time taken is: {end_time_cal-start_time_cal} seconds")
             write_data_to_file(path_to_folder, state_index, state, actions_average_max_reward)
 
 
 if __name__ == "__main__":
     n_process = psutil.cpu_count(logical=False)
-    src_data = r"\\10.5.10.44\data_2_1"
+    src_data = r"\\10.18.200.241\public\aibot\data_full_7_5"
 
     print(f"The number of running process: {n_process}")
     print(f"Finding src_data status: {os.path.exists(src_data)}")

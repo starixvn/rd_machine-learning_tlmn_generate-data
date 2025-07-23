@@ -15,7 +15,7 @@ from py_rule_based import rule_based_json_code
 from deep_Q_learning import value_iteration, extract_optimal_Q_table
 
 
-class Bot_Simulation(object):
+class Bot_Simulation_Test(object):
     def __init__(self):
         self.action_generator = ActionGenerator()
         self.utils = Utils()
@@ -98,9 +98,22 @@ class Bot_Simulation(object):
         return our_move
 
     def recursive_depth_first_search(self, env, player1_card, player2_card, player1_action, 
-                                     actions_card_player1, actions_card_player2, depth,
-                                     bomb_beat_seq, action_seq):
+                                     actions_card_player1, actions_card_player2, depth):
         if len(player1_card) == 0 or len(player2_card) == 0:
+            # for elem in path:
+            #     if isinstance(elem, int):
+            #         print(f"[{elem}]", end="=>")
+            #         pass
+            #     elif len(elem) > 0:
+            #         Card.print_pretty_cards(elem, end="=>")
+            #     else:
+            #         print(" PASS ", end="=>")
+            # if len(player1_card) == 0:
+            #     print("Player 1 wins, Player 2 card is: ", end=""); Card.print_pretty_cards(player2_card)
+            # else:
+            #     assert len(player1_card) > 0
+            #     print("Player 2 wins, Player 1 card is: ", end=""); Card.print_pretty_cards(player1_card)
+            # print()
             return
         state = (tuple(player2_card), tuple(player1_action), tuple(actions_card_player1), 
                  tuple(actions_card_player2), tuple(player1_card))
@@ -117,8 +130,6 @@ class Bot_Simulation(object):
 
             bomb_beat_2_versus_1 = self.reward.get_bomb_beating_penalty(player1_action, player2_action)
             bomb_beat_1_versus_2 = -1 * self.reward.get_bomb_beating_penalty(player2_action, next_player1_action)
-            next_bomb_beat_seq = bomb_beat_seq + (bomb_beat_2_versus_1, bomb_beat_1_versus_2)
-            next_action_seq = action_seq + [tuple(player2_action), tuple(next_player1_action)]
 
             next_player1_card = [card for card in player1_card if card not in next_player1_action]
 
@@ -132,24 +143,33 @@ class Bot_Simulation(object):
                     bomb_beat_2_versus_1 + bomb_beat_1_versus_2
             env[state][player2_action] = (next_state, reward)
             self.recursive_depth_first_search(env, next_player1_card, next_player2_card, next_player1_action, 
-                                              next_actions_card_player1, next_actions_card_player2, depth+1,
-                                              next_bomb_beat_seq, next_action_seq)
+                                              next_actions_card_player1, next_actions_card_player2, depth+1)
             
-    def build_env(self, player1_card, player2_card, who_play_first):
-        player1_action = self.run_rule_based_bot([], player1_card) if who_play_first == 1 else []
-        # print(f"Player {who_play_first} plays first", end=" ==> ")
-        # print(f"Player 1 action: ", end=""); Card.print_pretty_cards(player1_action)
-        player1_card = [card for card in player1_card if card not in player1_action]
-        actions_card_player1 = list(player1_action)
-        actions_card_player2 = []
-        bomb_beat_seq = tuple()
-        action_seq = [tuple(player1_action)]
+    # def build_env(self, player1_card, player2_card, who_play_first):
+    #     player1_action = self.run_rule_based_bot([], player1_card) if who_play_first == 1 else []
+    #     # print(f"Player {who_play_first} plays first", end=" ==> ")
+    #     # print(f"Player 1 action: ", end=""); Card.print_pretty_cards(player1_action)
+    #     player1_card = [card for card in player1_card if card not in player1_action]
+    #     actions_card_player1 = list(player1_action)
+    #     actions_card_player2 = []
+        
+    #     env = defaultdict(dict)
+    #     self.recursive_depth_first_search(env, player1_card, player2_card, player1_action, 
+    #                                       actions_card_player1, actions_card_player2, 0)
+    #     return env
+
+    def build_env(self, state, player1_card):
+        player2_card = list(state[0])
+        player1_action = list(state[1])
+        actions_card_player1 = list(state[2])
+        actions_card_player2 = list(state[3])
+        assert all(elem not in player1_card for elem in player1_action)
+        player1_card = list(player1_card)
         
         env = defaultdict(dict)
         self.recursive_depth_first_search(env, player1_card, player2_card, player1_action, 
-                                          actions_card_player1, actions_card_player2, 0, 
-                                          bomb_beat_seq, action_seq)
-        return env
+                                          actions_card_player1, actions_card_player2, 0)
+        return calculate_optimal_Q_table(env)
 
 
 def write_data_to_file(src_data, idx_game, optimal_Q_table, 
@@ -179,13 +199,13 @@ def calculate_optimal_Q_table(env):
         next_state for state_actions in env.values() 
         for next_state, _ in state_actions.values()
     }
-    print(f"Total states in observation space: {len(observation_space):,}")
+    # print(f"Total states in observation space: {len(observation_space):,}")
     value_table = value_iteration(env, observation_space)
     optimal_Q_table = extract_optimal_Q_table(value_table, env, observation_space)
     return optimal_Q_table
 
 def run_bot_simulation(src_data):
-    bot_simulation = Bot_Simulation()
+    bot_simulation = Bot_Simulation_Test()
     natural_win = NaturalWin()
 
     for idx_game in range(1):
@@ -221,14 +241,3 @@ if __name__ == "__main__":
         freeze_support()
     with Pool(processes=n_process) as pool:
         pool.map(run_bot_simulation, [src_data] * n_process)
-
-    # data_path = r"C:\Users\justin.pham\Downloads\tmp\TLMN_2025-07-16-15-34-41_CP23002JUSTIN_7268_0.pkl"
-    # with open(data_path, "rb") as f:
-    #     game_data = pickle.load(f)
-    # Q_table = game_data["Q_table"]
-    # distinct_Q_values = set()
-    # for state, action_Q_table in Q_table.items():
-    #     for action, Q_value in action_Q_table.items():
-    #         distinct_Q_values.add(Q_value)
-    # print(f"Total distinct Q values: {len(distinct_Q_values)}")
-    # print(f"Distinct Q values: {sorted(distinct_Q_values)}")
