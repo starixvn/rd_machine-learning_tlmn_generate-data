@@ -169,7 +169,8 @@ class Bot_Simulation_Test(object):
         env = defaultdict(dict)
         self.recursive_depth_first_search(env, player1_card, player2_card, player1_action, 
                                           actions_card_player1, actions_card_player2, 0)
-        return calculate_optimal_Q_table(env)
+        optimal_Q_table = calculate_optimal_Q_table(env)
+        return optimal_Q_table
 
 
 def write_data_to_file(src_data, idx_game, optimal_Q_table, 

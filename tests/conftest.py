@@ -1,6 +1,6 @@
 import pytest
 from tienlen_libs import Reward
-from main_full_4_3 import Bot_Simulation
+from test_main_full_4_3_editing import Bot_Simulation
 
 @pytest.fixture
 def reward():
