@@ -328,7 +328,7 @@ def run_bot_simulation(src_data):
         save_the_initial_game_info(path_to_folder, player1_card, player2_card, who_play_first)
         for state_index, state in enumerate(set_states):
             assert type(state[-1]) == int
-            if state[-1] not in [4, 3]: continue
+            if state[-1] not in [7, 6, 5]: continue
             start_time_cal = time.time()
             actions_average_max_reward = generate_average_max_reward_for_all_actions_of_state(state, 
                                                                         bot_simulation, player2_card)
@@ -342,7 +342,7 @@ def run_bot_simulation(src_data):
 
 if __name__ == "__main__":
     n_process = psutil.cpu_count(logical=False)
-    src_data = r"C:\Users\justin.pham\Downloads\tmp"
+    src_data = r"\\10.18.200.241\public\aibot\data_full_7_5"
 
     print(f"The number of running process: {n_process}")
     print(f"Finding src_data status: {os.path.exists(src_data)}")

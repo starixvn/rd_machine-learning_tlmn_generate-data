@@ -14,6 +14,7 @@ from py_mini_racer import py_mini_racer
 from py_rule_based import rule_based_json_code
 from math import comb
 from itertools import combinations
+import gc
 
 
 class Bot_Simulation(object):
@@ -94,7 +95,7 @@ class Bot_Simulation(object):
     def cal_upper_limit_of_reward(self, opponent_card):
         return 1 + self.reward.get_penalized_deuce_quartet_double_sequence(opponent_card)
 
-    def recursive_depth_first_search_reward(self, set_states, player1_card, player2_card, player1_action, 
+    def recursive_depth_first_search_reward(self, env, player1_card, player2_card, player1_action, 
                                                  actions_card_player1, actions_card_player2,
                                                  deck_remain, reward_info, traverse_all,
                                                  cumsum_bomb_beat):
@@ -110,9 +111,8 @@ class Bot_Simulation(object):
             return
         state = (tuple(player2_card), tuple(player1_action), tuple(actions_card_player1), 
                  tuple(actions_card_player2), tuple(deck_remain), len(player1_card))
-        if state in set_states:
-            if traverse_all: return
-        set_states.add(state)
+        if state in env:
+            return
         
         list_valid_action_player2 = self.action_generator.get_list_valid_action(player2_card, player1_action)
         for player2_action in list_valid_action_player2:
@@ -132,17 +132,47 @@ class Bot_Simulation(object):
             next_actions_card_player2 = actions_card_player2 + list(player2_action)
             next_actions_card_player2.sort()
             next_deck_remain = [card for card in deck_remain if card not in next_player1_action]
-            self.recursive_depth_first_search_reward(set_states, next_player1_card, 
+
+            next_state = (tuple(next_player2_card), tuple(next_player1_action), tuple(next_actions_card_player1), 
+                         tuple(next_actions_card_player2), tuple(next_deck_remain), len(next_player1_card))
+            reward = self.reward.get_reward(next_player1_card, next_player2_card) + \
+                        bomb_beat_2_versus_1 + bomb_beat_1_versus_2
+            terminated = len(next_player1_card) == 0 or len(next_player2_card) == 0
+            env[state][player2_action] = (next_state, reward, terminated)
+
+            self.recursive_depth_first_search_reward(env, next_player1_card, 
                                                      next_player2_card, next_player1_action, 
                                                      next_actions_card_player1, next_actions_card_player2,
                                                      next_deck_remain, reward_info, traverse_all,
                                                      next_cumsum_bomb_beat)
+
+    def compute_value(self, state, terminated, env, memo, upper_limit):
+        if state in memo:
+            return memo[state]
+
+        if terminated:
+            return 0
+
+        max_return = float('-inf')
+        if state in env:
+            for action_step_info in env[state].values():
+                next_state, reward, next_terminated = action_step_info
+                total_return = reward + self.compute_value(next_state, next_terminated, env, memo, upper_limit)
+                max_return = max(max_return, total_return)
+                assert max_return <= upper_limit
+                if max_return == upper_limit:
+                    memo[state] = upper_limit
+                    return upper_limit
+
+        memo[state] = max_return
+        return max_return
 
     def calculte_max_reward_for_all_actions_of_state(self, state, player1_card):
         player2_card, player1_action, actions_card_player1, actions_card_player2, deck_remain, _ = state
         list_valid_action_player2 = self.action_generator.get_list_valid_action(player2_card, player1_action)
         if len(list_valid_action_player2) == 1: return {}
         actions_max_reward = {}
+        env = defaultdict(dict)
         for player2_action in list_valid_action_player2:
             next_player2_card = [card for card in player2_card if card not in player2_action]
             if len(next_player2_card) > 0:
@@ -161,15 +191,24 @@ class Bot_Simulation(object):
             next_actions_card_player2.sort()
             next_deck_remain = [card for card in deck_remain if card not in next_player1_action]
 
+            next_state = (tuple(next_player2_card), tuple(next_player1_action), tuple(next_actions_card_player1), 
+                         tuple(next_actions_card_player2), tuple(next_deck_remain), len(next_player1_card))
+            reward = self.reward.get_reward(next_player1_card, next_player2_card) + \
+                        bomb_beat_2_versus_1 + bomb_beat_1_versus_2
+            terminated = len(next_player1_card) == 0 or len(next_player2_card) == 0
+            env[state][player2_action] = (next_state, reward, terminated)
+
             reward_info = {"max": float('-inf'), 
                            "upper_limit": self.cal_upper_limit_of_reward(player1_card) + next_cumsum_bomb_beat}
-            set_states = set()
             try:
-                self.recursive_depth_first_search_reward(set_states, next_player1_card, 
+                self.recursive_depth_first_search_reward(env, next_player1_card, 
                                                         next_player2_card, next_player1_action, 
                                                         next_actions_card_player1, next_actions_card_player2,
                                                         next_deck_remain, reward_info, traverse_all=False,
                                                         cumsum_bomb_beat=next_cumsum_bomb_beat)
+                if reward_info["max"] != reward_info["upper_limit"]:
+                    reward_info["max"] = reward + self.compute_value(next_state, terminated, env, {}, 
+                                                                     reward_info["upper_limit"])
             except Exception as e:
                 print(f"ERROR at {e}")
                 print(f"state = {state}")
@@ -177,7 +216,7 @@ class Bot_Simulation(object):
             actions_max_reward[player2_action] = reward_info["max"]
         return actions_max_reward
 
-    def build_set_states(self, player1_card, player2_card, who_play_first):
+    def build_env(self, player1_card, player2_card, who_play_first):
         full_deck = list(range(52))
         player1_action = self.run_rule_based_bot([], player1_card) if who_play_first == 1 else []
         player1_card = [card for card in player1_card if card not in player1_action]
@@ -185,14 +224,14 @@ class Bot_Simulation(object):
         actions_card_player2 = []
         deck_remain = [card for card in full_deck if card not in player2_card and card not in player1_action]
     
-        set_states = set()
+        env = defaultdict(dict)
         reward_info = {"max": float('-inf'),
                        "upper_limit": float('-inf')}
-        self.recursive_depth_first_search_reward(set_states, player1_card, player2_card, player1_action, 
+        self.recursive_depth_first_search_reward(env, player1_card, player2_card, player1_action, 
                                                  actions_card_player1, actions_card_player2,
                                                  deck_remain, reward_info, traverse_all=True,
                                                  cumsum_bomb_beat=0)
-        return set_states
+        return env
 
 
 def create_folder_contain_one_game_data(src_data, idx_game):
@@ -234,7 +273,7 @@ def generate_random_player1_card_from_deck_remain(deck_remain, len_player1_card,
 
     natural_win = NaturalWin()
     deck_remain_shuffled = list(deck_remain)
-    max_n_iter = 4000
+    max_n_iter = 1000
     n_iter = min(max_n_iter, comb(len(deck_remain), len_player1_card))
     if n_iter == max_n_iter:
         for _ in range(n_iter):
@@ -279,7 +318,9 @@ def run_bot_simulation(src_data):
             # print("Natural Win Detected: SKIPPING this game!!!")
             continue
         who_play_first = random.choice([1, 2])
-        set_states = bot_simulation.build_set_states(player1_card, player2_card, who_play_first)
+        env = bot_simulation.build_env(player1_card, player2_card, who_play_first)
+        set_states = set(env.keys())
+        del env; gc.collect()
         # print("\nPlayer1 cards: ", end=""); Card.print_pretty_cards(player1_card)
         # print("Player2 cards: ", end=""); Card.print_pretty_cards(player2_card)
         # print(f"The number of state: {len(set_states)}")
