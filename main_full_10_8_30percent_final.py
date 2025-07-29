@@ -208,11 +208,12 @@ class Bot_Simulation(object):
                                                         cumsum_bomb_beat=next_cumsum_bomb_beat)
                 if reward_info["max"] != reward_info["upper_limit"]:
                     reward_info["max"] = reward + self.compute_value(next_state, terminated, env, {}, 
-                                                                     reward_info["upper_limit"])
+                                                                     reward_info["upper_limit"] - reward)
             except Exception as e:
                 print(f"ERROR at {e}")
                 print(f"state = {state}")
                 print(f"player1_card = {player1_card}")
+                return {key_tmp: float('-inf') for key_tmp in list_valid_action_player2}
             actions_max_reward[player2_action] = reward_info["max"]
         return actions_max_reward
 
@@ -255,6 +256,7 @@ def save_the_initial_game_info(path_to_folder, player1_card, player2_card, who_p
         "player1_card": tuple(player1_card),
         "player2_card": tuple(player2_card), 
         "who_play_first": who_play_first,
+        "version": "final",
     }
     with open(path_to_file, "wb") as f:
         pickle.dump(initial_game_info, f, protocol=pickle.HIGHEST_PROTOCOL)
@@ -328,7 +330,7 @@ def run_bot_simulation(src_data):
         save_the_initial_game_info(path_to_folder, player1_card, player2_card, who_play_first)
         for state_index, state in enumerate(set_states):
             assert type(state[-1]) == int
-            if state[-1] not in [7, 6, 5]: continue
+            if state[-1] not in [10, 9, 8]: continue
             start_time_cal = time.time()
             actions_average_max_reward = generate_average_max_reward_for_all_actions_of_state(state, 
                                                                         bot_simulation, player2_card)
@@ -342,7 +344,7 @@ def run_bot_simulation(src_data):
 
 if __name__ == "__main__":
     n_process = psutil.cpu_count(logical=False)
-    src_data = r"\\10.18.200.241\public\aibot\data_full_7_5"
+    src_data = r"\\10.18.200.241\public\aibot\data_full_10_8"
 
     print(f"The number of running process: {n_process}")
     print(f"Finding src_data status: {os.path.exists(src_data)}")
