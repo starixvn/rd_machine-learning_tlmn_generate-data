@@ -344,7 +344,7 @@ def run_bot_simulation(src_data):
 
 if __name__ == "__main__":
     n_process = psutil.cpu_count(logical=False)
-    src_data = r"\\10.5.10.44\TLMN_2_players\data_final_4_3"
+    src_data = r"\\10.18.200.241\public\aibot\justin_add_part_2"
 
     print(f"The number of running process: {n_process}")
     print(f"Finding src_data status: {os.path.exists(src_data)}")
