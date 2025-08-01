@@ -259,11 +259,9 @@ def generate_random_player1_card_from_deck_remain(deck_remain, len_player1_card,
 def generate_average_max_reward_for_all_actions_of_state(state, bot_simulation, origin_player2_card, set_max_n_iter):
     _, _, _, _, deck_remain, len_player1_card = state
     actions_list_max_reward = defaultdict(list)
-    count = 0
-    for player1_card in generate_random_player1_card_from_deck_remain(deck_remain, len_player1_card, 
-                                                                      origin_player2_card, set_max_n_iter):
-        print(f"player1_card: ", end=""); Card.print_pretty_cards(player1_card, end=f" count = {count}\n")
-        count += 1
+    from tqdm import tqdm
+    for player1_card in tqdm(generate_random_player1_card_from_deck_remain(deck_remain, len_player1_card, 
+                                                                      origin_player2_card, set_max_n_iter)):
         actions_max_reward = bot_simulation.calculte_max_reward_for_all_actions_of_state(state, player1_card)
         if actions_max_reward == {}: return None
         for action, max_reward in actions_max_reward.items():
@@ -279,7 +277,7 @@ def run_bot_simulation(tmp_place):
     bot_simulation = Bot_Simulation()
     natural_win = NaturalWin()
     func_detect_special_case_in_card = Reward.detect_long_sequence_in_card
-    expected_len_sequence = 10
+    expected_len_sequence = 12
 
     for idx_game in range(10**6):
         full_deck = list(range(52))
@@ -310,22 +308,9 @@ def run_bot_simulation(tmp_place):
 
 
 if __name__ == "__main__":
-    # n_process = 1
-    # print(f"The number of running process: {n_process}")
-    # if sys.platform.startswith('win'):
-    #     freeze_support()
-    # with Pool(processes=n_process) as pool:
-    #     pool.map(run_bot_simulation, [0] * n_process)
-
-    import glob
-
-    data_check = r"\\10.5.10.44\TLMN_2_players\data_final_special_case"
-    pkl_files = glob.glob(os.path.join(data_check, "*", "*.pkl"))
-    print(f"Number of pkl files found: {len(pkl_files)}")
-    
-    for pkl_file in pkl_files:
-        with open(pkl_file, "rb") as f:
-            data = pickle.load(f)
-            state = list(data.keys())[0]
-            if len(state[1]) == 0:
-                print(data)
+    n_process = 1
+    print(f"The number of running process: {n_process}")
+    if sys.platform.startswith('win'):
+        freeze_support()
+    with Pool(processes=n_process) as pool:
+        pool.map(run_bot_simulation, [0] * n_process)
