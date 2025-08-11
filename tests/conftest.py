@@ -1,6 +1,6 @@
 import pytest
 from tienlen_libs import Reward
-from main_full_2_1_final import Bot_Simulation
+from main import Bot_Simulation
 from agent_bot.bot_2_players_honestly import Bot_2_players_honestly
 
 @pytest.fixture
