@@ -13,6 +13,7 @@ import random
 from py_mini_racer import py_mini_racer
 from py_rule_based import rule_based_json_code
 from deep_Q_learning import value_iteration_RAM_optimize, extract_optimal_Q_table_RAM_optimize
+from agent_bot.bot_2_players_honestly import Bot_2_players_honestly
 
 
 class Bot_Simulation(object):
@@ -24,6 +25,7 @@ class Bot_Simulation(object):
         self.ctx = self.compile_rule_based_json_code_with_V8_engine()
         self.test_rule_based_bot()
         self.reward = Reward()
+        self.medium_bot_reinforcement = Bot_2_players_honestly()
         
     def __create_tuple_rule_based_bot_input(self):
         tuple_rule_based_bot_input = tuple(f"anh/{i:02}{j}" for i in list(range(3, 15)) + [16] 
@@ -97,31 +99,53 @@ class Bot_Simulation(object):
         our_move.sort()
         return our_move
 
+    def __check_medium_bot_state(self, medium_bot_state, player1_play_first):
+        our_card, opponent_action, opponent_actions_card, \
+                our_actions_card, deck_remain_, len_opponent_card = medium_bot_state
+
+        assert len(set(our_card).union(set(our_actions_card))) == 13, "Union of our_card and our_actions_card must equal length 13"
+        assert not set(our_card).intersection(set(our_actions_card)), "our_card and our_actions_card must be disjoint"
+        assert set(opponent_action).issubset(set(opponent_actions_card)), "Opponent action must be subset of opponent actions card"
+        assert len(deck_remain_) == 39 - len(opponent_actions_card), "Length of deck_remain must be equal to 39 - len(opponent_actions_card)"
+        assert not set(deck_remain_).intersection(set(our_card)), "deck_remain must not intersect with our_card"
+        assert not set(deck_remain_).intersection(set(our_actions_card)), "deck_remain must not intersect with our_actions_card"
+        assert not set(deck_remain_).intersection(set(opponent_actions_card)), "deck_remain must not intersect with opponent_actions_card"
+        assert isinstance(len_opponent_card, int), "len_opponent_card must be an integer"
+        assert 1 <= len_opponent_card <= 13, "len_opponent_card must be between 1 and 13"
+        assert player1_play_first in [0, 1], "player1_play_first must be 0 or 1"
+
     def recursive_depth_first_search(self, env, player1_card, player2_card, player1_action, 
-                                     actions_card_player1, actions_card_player2):
+                                     actions_card_player1, actions_card_player2, 
+                                     deck_remain, player1_play_first):
         if len(player1_card) == 0 or len(player2_card) == 0:
             return
         state = (tuple(player2_card), tuple(player1_action), tuple(actions_card_player1), 
                  tuple(actions_card_player2), tuple(player1_card))
         if state in env: return
         
-        list_valid_action_player2 = self.action_generator.get_list_valid_action(player2_card, player1_action)
+        list_valid_action_player2 = self.action_generator.get_list_valid_action(state[0], state[1])
         for player2_action in list_valid_action_player2:
             next_player2_card = [card for card in player2_card if card not in player2_action]
+            next_actions_card_player2 = actions_card_player2 + list(player2_action)
+            next_actions_card_player2.sort()
+            next_deck_remain = [card for card in deck_remain if card not in player2_action]
+
             if len(next_player2_card) > 0:
-                next_player1_action = self.run_rule_based_bot(player2_action, player1_card)
+                medium_bot_state = (tuple(player1_card), tuple(player2_action), tuple(next_actions_card_player2),
+                                    tuple(actions_card_player1), tuple(next_deck_remain), len(next_player2_card))
+                self.__check_medium_bot_state(medium_bot_state, player1_play_first)
+                next_player1_action = self.medium_bot_reinforcement.choose_best_action_with_max_Q_value(
+                    medium_bot_state, player1_play_first
+                )
             else:
                 next_player1_action = []
 
-            bomb_beat_2_versus_1 = self.reward.get_bomb_beating_penalty(player1_action, player2_action)
-            bomb_beat_1_versus_2 = -1 * self.reward.get_bomb_beating_penalty(player2_action, next_player1_action)
-
             next_player1_card = [card for card in player1_card if card not in next_player1_action]
-
             next_actions_card_player1 = actions_card_player1 + list(next_player1_action)
             next_actions_card_player1.sort()
-            next_actions_card_player2 = actions_card_player2 + list(player2_action)
-            next_actions_card_player2.sort()
+
+            bomb_beat_2_versus_1 = self.reward.get_bomb_beating_penalty(player1_action, player2_action)
+            bomb_beat_1_versus_2 = -1 * self.reward.get_bomb_beating_penalty(player2_action, next_player1_action)
 
             next_state = (tuple(next_player2_card), tuple(next_player1_action), tuple(next_actions_card_player1), 
                          tuple(next_actions_card_player2), tuple(next_player1_card))
@@ -131,19 +155,25 @@ class Bot_Simulation(object):
             env[state][player2_action] = (next_state, reward, terminated)
             
             self.recursive_depth_first_search(env, next_player1_card, next_player2_card, next_player1_action, 
-                                              next_actions_card_player1, next_actions_card_player2)
+                                              next_actions_card_player1, next_actions_card_player2, 
+                                              next_deck_remain, player1_play_first)
             
     def build_env(self, player1_card, player2_card, who_play_first):
+        full_deck = list(range(52))
+        deck_remain = [card for card in full_deck if card not in player1_card]
+        assert len(deck_remain) == 39
         player1_action = self.run_rule_based_bot([], player1_card) if who_play_first == 1 else []
         print(f"Player {who_play_first} plays first", end=" ==> ")
         print(f"Player1 action: ", end=""); Card.print_pretty_cards(player1_action)
         player1_card = [card for card in player1_card if card not in player1_action]
         actions_card_player1 = list(player1_action)
         actions_card_player2 = []
+        player1_play_first = 1 if who_play_first == 1 else 0
         
         env = defaultdict(dict)
         self.recursive_depth_first_search(env, player1_card, player2_card, player1_action, 
-                                          actions_card_player1, actions_card_player2)
+                                          actions_card_player1, actions_card_player2, 
+                                          deck_remain, player1_play_first)
         return env
 
 
@@ -178,31 +208,32 @@ def run_bot_simulation(src_data):
     bot_simulation = Bot_Simulation()
     natural_win = NaturalWin()
 
-    for idx_game in range(10**6):
+    for idx_game in range(1):
         full_deck = list(range(52))
         np.random.shuffle(full_deck)
         player1_card = full_deck[:13]; player1_card.sort()
         player2_card = full_deck[13:26]; player2_card.sort()
+        # player1_card = "3d 4c 5c 6s 6c 6d 6h 8s 9s 9d Td Jd Ah"
+        # player1_card = [Card.new(elem) for elem in player1_card.split()]
+        # player2_card = "3h 5d 5h 7s 7c 8d 8h 9c Qs Qh Ad 2s 2h"
+        # player2_card = [Card.new(elem) for elem in player2_card.split()]
         print("\nPlayer1 cards: ", end=""); Card.print_pretty_cards(player1_card)
         print("Player2 cards: ", end=""); Card.print_pretty_cards(player2_card)
         if natural_win.detect_natural_win(player1_card) or natural_win.detect_natural_win(player2_card):
             print("Natural Win Detected: SKIPPING this game!!!")
             continue
-        who_play_first = random.choice([1, 2])
+        who_play_first = random.choice([2])
         env = bot_simulation.build_env(player1_card, player2_card, who_play_first)
         optimal_Q_table = calculate_optimal_Q_table(env)
         write_data_to_file(src_data, idx_game, optimal_Q_table, 
                            player1_card, player2_card, who_play_first)
 
-if __name__ == "__main__":
-    n_process = psutil.cpu_count(logical=False) - 1
-    src_data = r"C:\Users\justin.pham\Downloads\tmp"
 
-    print(f"The number of running process: {n_process}")
-    print(f"Finding src_data status: {os.path.exists(src_data)}")
-    if not os.path.exists(src_data):
-        os.makedirs(src_data)
-    if sys.platform.startswith('win'):
-        freeze_support()
-    with Pool(processes=n_process) as pool:
-        pool.map(run_bot_simulation, [src_data] * n_process)
+if __name__ == "__main__":
+    import cProfile
+    src_data = r"C:\Users\justin.pham\Downloads\tmp"
+    start_time = time.time()
+    cProfile.run('run_bot_simulation(src_data)')
+    # run_bot_simulation(src_data)
+    end_time = time.time()
+    print(f"\nTotal execution time: {end_time - start_time:.2f} seconds")

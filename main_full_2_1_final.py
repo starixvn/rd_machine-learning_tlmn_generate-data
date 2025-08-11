@@ -114,7 +114,7 @@ class Bot_Simulation(object):
         if state in env:
             return
         
-        list_valid_action_player2 = self.action_generator.get_list_valid_action(player2_card, player1_action)
+        list_valid_action_player2 = self.action_generator.get_list_valid_action(state[0], state[1])
         for player2_action in list_valid_action_player2:
             next_player2_card = [card for card in player2_card if card not in player2_action]
             if len(next_player2_card) > 0:
