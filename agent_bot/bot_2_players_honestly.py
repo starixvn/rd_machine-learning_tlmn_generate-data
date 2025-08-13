@@ -1,12 +1,18 @@
-import time
 from tienlen_libs import Card, ActionGenerator, Utils
 from tienlen_libs.constant import ComboType
-import os
 import numpy as np
 from functools import lru_cache
+import sys
+from pathlib import Path
 import tensorflow as tf
 
-interpreter = tf.lite.Interpreter(model_path="agent_bot/Bot_TLMN_solo_medium_level_optimize.tflite")
+if getattr(sys, 'frozen', False):  # Running from exe
+    base_path = Path(sys._MEIPASS)  # PyInstaller temp dir
+else:
+    base_path = Path(__file__).parent
+
+model_path = base_path / "Bot_TLMN_solo_medium_level_optimize.tflite"
+interpreter = tf.lite.Interpreter(model_path=str(model_path))
 interpreter.allocate_tensors()
 input_details = interpreter.get_input_details()
 output_details = interpreter.get_output_details()
