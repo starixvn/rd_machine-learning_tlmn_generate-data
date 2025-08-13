@@ -294,10 +294,10 @@ def generate_average_max_reward_for_all_actions_of_state(state, bot_simulation, 
         for action, max_reward in actions_max_reward.items():
             actions_list_max_reward[action].append(max_reward)
 
-    bot_simulation.medium_bot_reinforcement.generate_one_hot_encoding.cache_clear()
-    bot_simulation.action_generator.get_list_valid_action.cache_clear()
+        bot_simulation.medium_bot_reinforcement.generate_one_hot_encoding.cache_clear()
+        bot_simulation.action_generator.get_list_valid_action.cache_clear()
+        bot_simulation.reward.get_penalized_deuce_quartet_double_sequence.cache_clear()
     bot_simulation.medium_bot_reinforcement.generate_action_encoding.cache_clear()
-    bot_simulation.reward.get_penalized_deuce_quartet_double_sequence.cache_clear()
 
     lengths = [len(rewards) for rewards in actions_list_max_reward.values()]
     assert all(x == lengths[0] for x in lengths), "All reward lists must have equal length"

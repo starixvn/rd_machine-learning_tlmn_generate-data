@@ -16,14 +16,14 @@ from deep_Q_learning import value_iteration_RAM_optimize, extract_optimal_Q_tabl
 from agent_bot.bot_2_players_honestly import Bot_2_players_honestly
 
 
-class Bot_Simulation(object):
+class Bot_Simulation_Test(object):
     def __init__(self):
         self.action_generator = ActionGenerator()
         self.utils = Utils()
         self.tuple_rule_based_bot_input = self.__create_tuple_rule_based_bot_input()
         self.map_rule_based_bot_input_to_card = self.__create_mapping_rule_based_bot_input_to_card()
         self.ctx = self.compile_rule_based_json_code_with_V8_engine()
-        self.test_rule_based_bot()
+        # self.test_rule_based_bot()
         self.reward = Reward()
         self.medium_bot_reinforcement = Bot_2_players_honestly()
         
@@ -158,23 +158,41 @@ class Bot_Simulation(object):
                                               next_actions_card_player1, next_actions_card_player2, 
                                               next_deck_remain, player1_play_first)
             
-    def build_env(self, player1_card, player2_card, who_play_first):
-        full_deck = list(range(52))
-        deck_remain = [card for card in full_deck if card not in player1_card]
-        assert len(deck_remain) == 39
-        player1_action = self.run_rule_based_bot([], player1_card) if who_play_first == 1 else []
-        print(f"Player {who_play_first} plays first", end=" ==> ")
-        print(f"Player1 action: ", end=""); Card.print_pretty_cards(player1_action)
-        player1_card = [card for card in player1_card if card not in player1_action]
-        actions_card_player1 = list(player1_action)
-        actions_card_player2 = []
+    # def build_env(self, player1_card, player2_card, who_play_first):
+    #     full_deck = list(range(52))
+    #     deck_remain = [card for card in full_deck if card not in player1_card]
+    #     assert len(deck_remain) == 39
+    #     player1_action = self.run_rule_based_bot([], player1_card) if who_play_first == 1 else []
+    #     print(f"Player {who_play_first} plays first", end=" ==> ")
+    #     print(f"Player1 action: ", end=""); Card.print_pretty_cards(player1_action)
+    #     player1_card = [card for card in player1_card if card not in player1_action]
+    #     actions_card_player1 = list(player1_action)
+    #     actions_card_player2 = []
+    #     player1_play_first = 1 if who_play_first == 1 else 0
+        
+    #     env = defaultdict(dict)
+    #     self.recursive_depth_first_search(env, player1_card, player2_card, player1_action, 
+    #                                       actions_card_player1, actions_card_player2, 
+    #                                       deck_remain, player1_play_first)
+    #     return env
+
+    def build_env(self, state, player1_card, who_play_first):
+        player2_card = list(state[0])
+        player1_action = list(state[1])
+        actions_card_player1 = list(state[2])
+        actions_card_player2 = list(state[3])
+        assert all(elem not in player1_card for elem in player1_action)
+        player1_card = list(player1_card)
+        deck_remain = list(set(range(52)) - set(player1_card) \
+                                   - set(actions_card_player1) - set(actions_card_player2))
         player1_play_first = 1 if who_play_first == 1 else 0
         
         env = defaultdict(dict)
         self.recursive_depth_first_search(env, player1_card, player2_card, player1_action, 
                                           actions_card_player1, actions_card_player2, 
                                           deck_remain, player1_play_first)
-        return env
+        optimal_Q_table = calculate_optimal_Q_table(env)
+        return optimal_Q_table
 
 
 def write_data_to_file(src_data, idx_game, optimal_Q_table, 
@@ -205,7 +223,7 @@ def calculate_optimal_Q_table(env):
     return optimal_Q_table
 
 def run_bot_simulation(src_data):
-    bot_simulation = Bot_Simulation()
+    bot_simulation = Bot_Simulation_Test()
     natural_win = NaturalWin()
 
     for idx_game in range(1):
@@ -233,21 +251,6 @@ if __name__ == "__main__":
     import cProfile
     src_data = r"C:\Users\justin.pham\Downloads\tmp"
     start_time = time.time()
-    cProfile.run('run_bot_simulation(src_data)')
-    # run_bot_simulation(src_data)
+    run_bot_simulation(src_data)
     end_time = time.time()
     print(f"\nTotal execution time: {end_time - start_time:.2f} seconds")
-
-    import cProfile
-
-    state = ((1, 7, 10, 11, 14, 15, 18, 29, 34), (), (19, 20, 22, 25, 28, 35, 36, 41), (17, 23, 26, 43), 
-             (0, 2, 3, 4, 5, 6, 8, 9, 12, 13, 16, 21, 24, 27, 30, 31, 32, 33, 37, 38, 39, 40, 42, 44, 45, 46, 47, 48, 49, 50, 51), 5)
-    player2_card = [1, 7, 10, 11, 14, 15, 17, 18, 23, 26, 29, 34, 43]
-    who_play_first = 1
-    bot_simulation = Bot_Simulation()
-    bot_simulation.who_play_first = who_play_first
-
-    start_time = time.time()
-    cProfile.run('generate_average_max_reward_for_all_actions_of_state(state, bot_simulation, player2_card)')
-    end_time = time.time()
-    print(f"Total time taken: {end_time - start_time:.2f} seconds")
