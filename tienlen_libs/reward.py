@@ -1,6 +1,7 @@
 from .utils import Utils
 from .action_generation import ActionGenerator
 from .constant import ComboType
+from functools import lru_cache
 
 class Reward(object):
     BOMB_PENALTY = {
@@ -71,6 +72,7 @@ class Reward(object):
         return (n_long_sequence > 0)
 
     @classmethod
+    @lru_cache(maxsize=None)
     def get_penalized_deuce_quartet_double_sequence(cls, player_card):
         assert list(player_card) == sorted(player_card)
         assert len(player_card) > 0
@@ -105,10 +107,10 @@ class Reward(object):
         len_player2_card = len(player2_card)
 
         if len_player2_card == 0:
-            player1_penalized = cls.get_penalized_deuce_quartet_double_sequence(player1_card)
+            player1_penalized = cls.get_penalized_deuce_quartet_double_sequence(tuple(player1_card))
             return 1 + player1_penalized
         elif len_player1_card == 0:
-            player2_penalized = cls.get_penalized_deuce_quartet_double_sequence(player2_card)
+            player2_penalized = cls.get_penalized_deuce_quartet_double_sequence(tuple(player2_card))
             return -1 * (1 + player2_penalized)
         else:
             return 0

@@ -18,7 +18,8 @@ def infer_tflite(x):
 class Bot_2_players_honestly(object):
     def __init__(self):
         self.action_generator = ActionGenerator()
-     
+
+    @lru_cache(maxsize=None) 
     def generate_one_hot_encoding(self, cards: tuple[int], dimension: int = 52):
         arr = np.zeros(dimension, dtype=np.float32)
         arr[list(cards)] = 1
@@ -70,7 +71,7 @@ class Bot_2_players_honestly(object):
     def predict_Q_value_tflite(self, state_action_array):
         return infer_tflite(state_action_array)[0][0]
 
-    @lru_cache(maxsize=None)
+    # @lru_cache(maxsize=None)
     def choose_best_action_with_max_Q_value(self, state, I_play_first):
         state_encoding = self.encode_state(state)
         assert I_play_first in [1, 0]

@@ -237,3 +237,17 @@ if __name__ == "__main__":
     # run_bot_simulation(src_data)
     end_time = time.time()
     print(f"\nTotal execution time: {end_time - start_time:.2f} seconds")
+
+    import cProfile
+
+    state = ((1, 7, 10, 11, 14, 15, 18, 29, 34), (), (19, 20, 22, 25, 28, 35, 36, 41), (17, 23, 26, 43), 
+             (0, 2, 3, 4, 5, 6, 8, 9, 12, 13, 16, 21, 24, 27, 30, 31, 32, 33, 37, 38, 39, 40, 42, 44, 45, 46, 47, 48, 49, 50, 51), 5)
+    player2_card = [1, 7, 10, 11, 14, 15, 17, 18, 23, 26, 29, 34, 43]
+    who_play_first = 1
+    bot_simulation = Bot_Simulation()
+    bot_simulation.who_play_first = who_play_first
+
+    start_time = time.time()
+    cProfile.run('generate_average_max_reward_for_all_actions_of_state(state, bot_simulation, player2_card)')
+    end_time = time.time()
+    print(f"Total time taken: {end_time - start_time:.2f} seconds")
