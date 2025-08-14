@@ -10,8 +10,6 @@ from datetime import datetime
 import sys
 import numpy as np
 import random
-from py_mini_racer import py_mini_racer
-from py_rule_based import rule_based_json_code
 from math import comb
 from itertools import combinations
 import gc
@@ -26,21 +24,6 @@ class Bot_Simulation(object):
         self.who_play_first = -1
         self.medium_bot_reinforcement = Bot_2_players_honestly()
         
-    def check_medium_bot_state(self, medium_bot_state, player1_play_first):
-        our_card, opponent_action, opponent_actions_card, \
-                our_actions_card, deck_remain_, len_opponent_card = medium_bot_state
-
-        assert len(set(our_card).union(set(our_actions_card))) == 13, "Union of our_card and our_actions_card must equal length 13"
-        assert not set(our_card).intersection(set(our_actions_card)), "our_card and our_actions_card must be disjoint"
-        assert set(opponent_action).issubset(set(opponent_actions_card)), "Opponent action must be subset of opponent actions card"
-        assert len(deck_remain_) == 39 - len(opponent_actions_card), "Length of deck_remain must be equal to 39 - len(opponent_actions_card)"
-        assert not set(deck_remain_).intersection(set(our_card)), "deck_remain must not intersect with our_card"
-        assert not set(deck_remain_).intersection(set(our_actions_card)), "deck_remain must not intersect with our_actions_card"
-        assert not set(deck_remain_).intersection(set(opponent_actions_card)), "deck_remain must not intersect with opponent_actions_card"
-        assert isinstance(len_opponent_card, int), "len_opponent_card must be an integer"
-        assert 1 <= len_opponent_card <= 13, "len_opponent_card must be between 1 and 13"
-        assert player1_play_first in [0, 1], "player1_play_first must be 0 or 1"
-
     def cal_upper_limit_of_reward(self, opponent_card):
         return 1 + self.reward.get_penalized_deuce_quartet_double_sequence(tuple(opponent_card))
 
@@ -77,7 +60,6 @@ class Bot_Simulation(object):
                 medium_bot_state = (tuple(player1_card), tuple(player2_action), tuple(next_actions_card_player2),
                                     tuple(actions_card_player1), tuple(next_deck_remain_player2), len(next_player2_card))
                 player1_play_first = 1 if self.who_play_first == 1 else 0
-                self.check_medium_bot_state(medium_bot_state, player1_play_first)
                 next_player1_action = self.medium_bot_reinforcement.choose_best_action_with_max_Q_value(
                     medium_bot_state, player1_play_first
                 )
@@ -149,7 +131,6 @@ class Bot_Simulation(object):
                 medium_bot_state = (tuple(player1_card), tuple(player2_action), tuple(next_actions_card_player2),
                                     tuple(actions_card_player1), tuple(next_deck_remain_player2), len(next_player2_card))
                 player1_play_first = 1 if self.who_play_first == 1 else 0
-                self.check_medium_bot_state(medium_bot_state, player1_play_first)
                 next_player1_action = self.medium_bot_reinforcement.choose_best_action_with_max_Q_value(
                     medium_bot_state, player1_play_first
                 )
@@ -205,7 +186,6 @@ class Bot_Simulation(object):
                                 tuple(actions_card_player1), tuple(deck_remain_player2), len(player2_card))
             assert medium_bot_state[-1] == 13 and len(medium_bot_state[-2]) == 39
             player1_play_first = 1 if self.who_play_first == 1 else 0
-            self.check_medium_bot_state(medium_bot_state, player1_play_first)
             player1_action = self.medium_bot_reinforcement.choose_best_action_with_max_Q_value(
                 medium_bot_state, player1_play_first
             )
