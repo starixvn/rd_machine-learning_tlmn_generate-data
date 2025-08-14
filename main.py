@@ -14,6 +14,7 @@ from math import comb
 from itertools import combinations
 import gc
 from agent_bot.bot_2_players_honestly import Bot_2_players_honestly
+import math
 
 
 class Bot_Simulation(object):
@@ -300,7 +301,12 @@ def run_bot_simulation(src_data):
         who_play_first = random.choice([1, 2])
         bot_simulation.who_play_first = who_play_first
         env = bot_simulation.build_env(player1_card, player2_card)
-        set_states = set(env.keys())
+
+        src_data_split = src_data.split("_")
+        start_range_idx, end_range_idx = int(src_data_split[-1]), int(src_data_split[-2])
+        set_states = [key_state for key_state in env 
+                    if key_state[-1] in range(start_range_idx, end_range_idx+1)]
+        random.shuffle(set_states)
         del env; gc.collect()
         # print("\nPlayer1 cards: ", end=""); Card.print_pretty_cards(player1_card)
         # print("Player2 cards: ", end=""); Card.print_pretty_cards(player2_card)
@@ -308,8 +314,6 @@ def run_bot_simulation(src_data):
         path_to_folder = create_folder_contain_one_game_data(src_data, idx_game)
         save_the_initial_game_info(path_to_folder, player1_card, player2_card, who_play_first)
         for state_index, state in enumerate(set_states):
-            assert type(state[-1]) == int
-            if state[-1] not in [2, 1]: continue
             start_time_cal = time.time()
             actions_average_max_reward = generate_average_max_reward_for_all_actions_of_state(state, 
                                                                         bot_simulation, player2_card)
@@ -322,14 +326,21 @@ def run_bot_simulation(src_data):
 
 
 if __name__ == "__main__":
+    def divide_job(n_process, src_data):
+        n_src_data_idx_0 = int(0.5 * n_process)
+        n_src_data_idx_1 = math.ceil(0.5 * (n_process - n_src_data_idx_0))
+        n_src_data_idx_2 = n_process - n_src_data_idx_0 - n_src_data_idx_1
+        return n_src_data_idx_0 * [src_data[0]] + \
+                n_src_data_idx_1 * [src_data[1]] + \
+                n_src_data_idx_2 * [src_data[2]]
+
     n_process = psutil.cpu_count(logical=False)
-    src_data = r"C:\Users\justin.pham\Downloads\tmp"
+    src_data = [r"C:\Users\justin.pham\Downloads\tmp_13_11",
+                r"C:\Users\justin.pham\Downloads\tmp_10_8",
+                r"C:\Users\justin.pham\Downloads\tmp_7_5"]
 
     print(f"The number of running process: {n_process}")
-    print(f"Finding src_data status: {os.path.exists(src_data)}")
-    if not os.path.exists(src_data):
-        os.makedirs(src_data)
     if sys.platform.startswith('win'):
         freeze_support()
     with Pool(processes=n_process) as pool:
-        pool.map(run_bot_simulation, [src_data] * n_process)
+        pool.map(run_bot_simulation, divide_job(n_process, src_data))

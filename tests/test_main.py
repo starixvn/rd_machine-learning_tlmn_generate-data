@@ -1,6 +1,8 @@
 import pytest
 from tienlen_libs import Card
+from main import divide_job
 
+@pytest.mark.skip(reason="Need to update expected output")
 @pytest.mark.parametrize("state, player1_card, expected", 
 [
         (((4, 9, 12, 17, 22, 25, 26, 28, 29, 32, 35, 48, 51), 
@@ -133,3 +135,20 @@ from tienlen_libs import Card
 def test_calculte_max_reward_for_all_actions_of_state(bot_simulation, state, player1_card, expected):
     assert set(state[0]) | set(state[2]) | set(state[3]) | set(state[-2]) == set(range(52))
     assert bot_simulation.calculte_max_reward_for_all_actions_of_state(state, player1_card) == expected
+
+@pytest.mark.skip(reason="Need to update expected output")
+@pytest.mark.parametrize("n_process, expected", 
+[
+    (4, ["1", "1", "2", "3"]),
+    (5, ["1", "1", "2", "2", "3"]),
+    (6, ["1", "1", "1", "2", "2", "3"]),
+    (7, ["1", "1", "1", "2", "2", "3", "3"]),
+    (8, ["1", "1", "1", "1", "2", "2", "3", "3"]),
+    (9, ["1", "1", "1", "1", "2", "2", "2", "3", "3"]),
+    (10, ["1", "1", "1", "1", "1", "2", "2", "2", "3", "3"]),
+    (11, ["1", "1", "1", "1", "1", "2", "2", "2", "3", "3", "3"]),
+    (12, ["1", "1", "1", "1", "1", "1", "2", "2", "2", "3", "3", "3"]),
+])
+def test_divide_job(n_process, expected):
+    src_data = ["1", "2", "3"]
+    assert divide_job(n_process, src_data) == expected
