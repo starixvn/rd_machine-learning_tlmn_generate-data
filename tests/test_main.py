@@ -1,6 +1,6 @@
 import pytest
 from tienlen_libs import Card
-from main import divide_job
+from main_hard_mode import divide_job
 
 @pytest.mark.skip(reason="Need to update expected output")
 @pytest.mark.parametrize("state, player1_card, expected", 

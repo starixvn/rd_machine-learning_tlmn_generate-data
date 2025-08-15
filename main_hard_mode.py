@@ -334,10 +334,10 @@ if __name__ == "__main__":
                 n_src_data_idx_1 * [src_data[1]] + \
                 n_src_data_idx_2 * [src_data[2]]
 
-    n_process = psutil.cpu_count(logical=False)
-    src_data = [r"C:\Users\justin.pham\Downloads\tmp_13_11",
-                r"C:\Users\justin.pham\Downloads\tmp_10_8",
-                r"C:\Users\justin.pham\Downloads\tmp_7_5"]
+    n_process = psutil.cpu_count(logical=False) - 1
+    src_data = [r"\\10.18.200.241\public\aibot\data_full_13_11",
+                r"\\10.18.200.241\public\aibot\data_full_10_8",
+                r"\\10.18.200.241\public\aibot\data_full_7_5"]
 
     print(f"The number of running process: {n_process}")
     if sys.platform.startswith('win'):
