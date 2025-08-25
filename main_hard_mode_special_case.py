@@ -305,15 +305,12 @@ def run_bot_simulation(src_data):
         bot_simulation.who_play_first = who_play_first
         env = bot_simulation.build_env(player1_card, player2_card)
 
-        src_data_split = src_data.split("_")
-        start_range_idx, end_range_idx = int(src_data_split[-1]), int(src_data_split[-2])
-        set_states = [key_state for key_state in env 
-                    if key_state[-1] in range(start_range_idx, end_range_idx+1)]
+        set_states = [key_state for key_state in env]
         random.shuffle(set_states)
         del env; gc.collect()
-        # print("\nPlayer1 cards: ", end=""); Card.print_pretty_cards(player1_card)
-        # print("Player2 cards: ", end=""); Card.print_pretty_cards(player2_card)
-        # print(f"The number of state: {len(set_states)}")
+        print("\nPlayer1 cards: ", end=""); Card.print_pretty_cards(player1_card)
+        print("Player2 cards: ", end=""); Card.print_pretty_cards(player2_card)
+        print(f"The number of state: {len(set_states):,}")
         path_to_folder = create_folder_contain_one_game_data(src_data, idx_game)
         save_the_initial_game_info(path_to_folder, player1_card, player2_card, who_play_first)
         for state_index, state in enumerate(set_states):
