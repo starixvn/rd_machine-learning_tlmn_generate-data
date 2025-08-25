@@ -323,6 +323,7 @@ def run_bot_simulation(src_data):
             end_time_cal = time.time()
             if actions_average_max_reward is None: continue
             print(f"\nstate: {state}")
+            Card.print_pretty_cards(state[0])
             print(f"{actions_average_max_reward}")
             print(f"The time taken is: {end_time_cal-start_time_cal} seconds")
             write_data_to_file(path_to_folder, state_index, state, actions_average_max_reward)
