@@ -290,7 +290,7 @@ def run_bot_simulation(src_data):
     bot_simulation = Bot_Simulation()
     natural_win = NaturalWin()
     func_detect_special_case_in_card = Reward.detect_long_sequence_in_card
-    expected_len_sequence = 12
+    expected_len_sequence = 10
 
     for idx_game in range(10**6):
         full_deck = list(range(52))
