@@ -290,7 +290,7 @@ def generate_average_max_reward_for_all_actions_of_state(state, bot_simulation, 
 def run_bot_simulation(src_data):
     bot_simulation = Bot_Simulation()
     natural_win = NaturalWin()
-    func_detect_special_case_in_card = Reward.detect_double_sequence_three_in_card
+    func_detect_special_case_in_card = Reward.detect_double_sequence_four_in_card
 
     for idx_game in range(10**6):
         full_deck = list(range(52))
@@ -301,7 +301,7 @@ def run_bot_simulation(src_data):
             # print("Natural Win Detected: SKIPPING this game!!!")
             continue
         if not func_detect_special_case_in_card(player2_card): continue
-        # if not Reward.detect_double_sequence_three_in_card(player1_card): continue
+        if not Reward.detect_double_sequence_four_in_card(player1_card): continue
         who_play_first = random.choice([1, 2])
         bot_simulation.who_play_first = who_play_first
         env = bot_simulation.build_env(player1_card, player2_card)
@@ -318,7 +318,7 @@ def run_bot_simulation(src_data):
             assert set(state[0]).issubset(set(player2_card))
             assert len(player2_card) == 13
             if not func_detect_special_case_in_card(state[0]): continue
-            if Utils.get_combo_type(state[1]) != ComboType.SINGLE_DEUCE: continue
+            if Utils.get_combo_type(state[1]) != ComboType.DOUBLE_SEQUENCE_FOUR: continue
             start_time_cal = time.time()
             actions_average_max_reward = generate_average_max_reward_for_all_actions_of_state(state, 
                                                                         bot_simulation, player2_card)

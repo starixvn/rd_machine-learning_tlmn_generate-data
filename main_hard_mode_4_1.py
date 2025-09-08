@@ -327,7 +327,7 @@ def run_bot_simulation(src_data):
 
 if __name__ == "__main__":
     def divide_job(n_process, src_data):
-        n_src_data_idx_0 = math.ceil(0.8 * n_process)
+        n_src_data_idx_0 = int(0.5 * n_process)
         n_src_data_idx_1 = n_process - n_src_data_idx_0
         return n_src_data_idx_0 * [src_data[0]] + \
                 n_src_data_idx_1 * [src_data[1]]

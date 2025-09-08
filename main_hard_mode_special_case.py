@@ -289,8 +289,7 @@ def generate_average_max_reward_for_all_actions_of_state(state, bot_simulation, 
 def run_bot_simulation(src_data):
     bot_simulation = Bot_Simulation()
     natural_win = NaturalWin()
-    func_detect_special_case_in_card = Reward.detect_long_sequence_in_card
-    expected_len_sequence = 10
+    func_detect_special_case_in_card = Reward.detect_double_sequence_three_in_card
 
     for idx_game in range(10**6):
         full_deck = list(range(52))
@@ -300,7 +299,7 @@ def run_bot_simulation(src_data):
         if natural_win.detect_natural_win(player1_card) or natural_win.detect_natural_win(player2_card):
             # print("Natural Win Detected: SKIPPING this game!!!")
             continue
-        if not func_detect_special_case_in_card(player2_card, expected_len_sequence): continue
+        if not func_detect_special_case_in_card(player2_card): continue
         who_play_first = random.choice([1, 2])
         bot_simulation.who_play_first = who_play_first
         env = bot_simulation.build_env(player1_card, player2_card)
@@ -316,7 +315,7 @@ def run_bot_simulation(src_data):
         for state_index, state in enumerate(set_states):
             assert set(state[0]).issubset(set(player2_card))
             assert len(player2_card) == 13
-            if not func_detect_special_case_in_card(state[0], expected_len_sequence): continue
+            if not func_detect_special_case_in_card(state[0]): continue
             start_time_cal = time.time()
             actions_average_max_reward = generate_average_max_reward_for_all_actions_of_state(state, 
                                                                         bot_simulation, player2_card)
@@ -335,6 +334,7 @@ if __name__ == "__main__":
         return n_src_data_idx_0 * [src_data[0]]
 
     n_process = psutil.cpu_count(logical=False) - 1
+    n_process = min(12, n_process)
     src_data = [r"\\10.5.10.44\TLMN_2_players_hard_level\data_hard_special_case"]
 
     print(f"The number of running process: {n_process}")
