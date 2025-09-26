@@ -114,23 +114,40 @@ class Reward(object):
             return -1 * (1 + player2_penalized)
         else:
             return 0
-                
-    def get_reward_more_than_2_players(self, player_card):
-        len_player1_card = len(player_card[1])
-        other_player_lens = [len(player_card[player_id]) 
-                            for player_id in player_card if player_id != 1]
-        assert len(other_player_lens) == len(player_card) - 1
+    
+    @staticmethod
+    def cal_n_other_player_playing(player_card):
+        return sum(1 for cards in player_card[1:] if len(cards) > 0)
 
-        if len_player1_card == 0:
-            assert all(l > 0 for l in other_player_lens)
-            return 1
-        elif any(l == 0 for l in other_player_lens):
-            assert len_player1_card > 0
-            assert sum([l == 0 for l in other_player_lens]) == 1
-            return -1
+    @classmethod
+    def count_n_deuce_special_case_other_player(cls, other_player_card):
+        assert len(other_player_card) in [1, 3], f"other_player_card = {other_player_card}"
+        """
+        For performance, we check deuce first, then check special_case later.
+        The function count_n_distinct_special_case is more expensive
+        """
+        n = 0
+        for cards in other_player_card:
+            n += cls.count_n_deuce_in_card(cards)
+            n += cls.count_n_distinct_special_case(cards)
+        return n
+
+    @classmethod
+    def get_reward_more_than_2_players(cls, player_card):
+        len_player0_card = len(player_card[0])
+        n_other_player_playing = cls.cal_n_other_player_playing(player_card)
+        if len_player0_card == 0:
+            assert n_other_player_playing > 0, f"{n_other_player_playing} is not > 0"
+            r = n_other_player_playing
+            if cls.count_n_deuce_special_case_other_player(player_card[1:]) > 0:
+                r += 1
         else:
-            assert len_player1_card > 0 and all(l > 0 for l in other_player_lens)
-            return 0
+            r = 0
+            if n_other_player_playing == 0:
+                if cls.count_n_deuce_special_case_other_player(player_card[:1]) > 0:
+                    r -= 1
+
+        return r
 
     @classmethod    
     def get_deuce_action_bomb_penalty(cls, deuce_action):
@@ -177,3 +194,28 @@ class Reward(object):
             assert last_nonzero != 0
             total_reward += (temporary_reward * (1 if last_nonzero > 0 else -1))
         return total_reward
+
+    @staticmethod
+    def count_n_deuce_in_card(player_card):
+        return sum(c >= 48 for c in player_card)
+
+    @classmethod
+    def count_n_distinct_special_case(cls, player_card):
+        len_player_card = len(player_card)
+        assert len_player_card <= 13
+        n_special_case = 0
+
+        if len_player_card >= 4:
+            frequency_stats = Utils.stats_frequency_of_card(player_card)
+
+            quartet_rank = next((rank for rank, cards in frequency_stats.items() if len(cards) == 4), None) 
+            if quartet_rank is not None:
+                n_special_case += 1
+                del frequency_stats[quartet_rank]
+        
+            if len_player_card >= 6:
+                n_double_sequence_three, n_double_sequence_four = \
+                    cls.count_n_double_sequence_three_and_four(frequency_stats)
+                assert n_double_sequence_three + n_double_sequence_four <= 1
+                n_special_case += (n_double_sequence_three + n_double_sequence_four)
+        return n_special_case
