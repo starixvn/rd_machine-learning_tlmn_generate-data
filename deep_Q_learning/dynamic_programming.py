@@ -37,7 +37,7 @@ def value_iteration_RAM_optimize(env):
             for action_info in state_info.values():
                 next_state, reward, terminated = action_info
                 if terminated:
-                    assert reward != 0, f"Reward = {reward}"
+                    # assert reward != 0, f"Reward = {reward}"
                     Q_values.append(reward)
                 else:
                     Q_values.append(reward + gamma * updated_value_table[next_state])
@@ -70,7 +70,7 @@ def extract_optimal_Q_table_RAM_optimize(value_table, env):
         for action, action_info in state_info.items():
             next_state, reward, terminated = action_info
             if terminated:
-                assert reward != 0, f"Reward = {reward}"
+                # assert reward != 0, f"Reward = {reward}"
                 action_Q_value[action] = reward
             else:
                 action_Q_value[action] = reward + gamma * value_table[next_state]

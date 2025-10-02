@@ -10,10 +10,11 @@ from datetime import datetime
 import sys
 import numpy as np
 import random
+from deep_Q_learning import value_iteration_RAM_optimize, extract_optimal_Q_table_RAM_optimize
 from agent_bot.TL_AI_bot import Bot_TL_AI
 
 
-class Bot_Simulation(object):
+class Bot_Simulation_Test(object):
     def __init__(self, n_player=4):
         self.action_generator = ActionGenerator()
         self.utils = Utils()
@@ -23,9 +24,10 @@ class Bot_Simulation(object):
         self.finish_int_encode = -2
         self.tl_ai_bot = Bot_TL_AI()
 
-    def reset_player_skip(self, player_skip):
+    def reset_player_skip(self, player_skip, player_action):
         for i in range(self.n_player):
-            player_skip[i] = False
+            if player_action[i] != self.finish_int_encode:
+                player_skip[i] = False
 
     def get_player_action(self, player_id, player_id_card, last_action, turn):
         if turn == player_id:
@@ -74,14 +76,14 @@ class Bot_Simulation(object):
         return list_possible_action
 
     def get_list_valid_action_of_first_player(self, first_player_id, first_player_card, 
-                                            last_action, turn, player_skip):
+                                            player_action, turn, player_skip):
         if not player_skip[first_player_id]:
-            if turn == first_player_id: self.reset_player_skip(player_skip)
+            if turn == first_player_id: self.reset_player_skip(player_skip, player_action)
             list_valid_action_first_player = self.get_list_valid_action_of_player(
-                                            first_player_id, first_player_card, last_action, turn)
+                                            first_player_id, first_player_card, player_action[turn], turn)
         else:
             list_valid_action_first_player = self.get_list_valid_action_in_skip_condition(
-                                            first_player_id, first_player_card, last_action, turn)
+                                            first_player_id, first_player_card, player_action[turn], turn)
             assert self.skip_int_encode in list_valid_action_first_player
         return list_valid_action_first_player
 
@@ -105,9 +107,11 @@ class Bot_Simulation(object):
         return (turn + 1) % self.n_player
 
     def run_round_for_other_players(self, player_card, player_action, player_skip, turn, player_id_start=1):
+        bomb_beat_other_player = 0
         for player_id in range(player_id_start, self.n_player):
             if not player_card[player_id]:
                 player_action[player_id] = self.finish_int_encode
+                player_skip[player_id] = True
                 if turn == player_id:
                     turn = self.move_to_next_turn(turn)
                     player_skip[turn] = False
@@ -115,28 +119,40 @@ class Bot_Simulation(object):
 
             if not player_card[0]:
                 player_action[player_id] = self.skip_int_encode
+                player_skip[player_id] = True
                 continue
 
             if not player_skip[player_id]:
-                if turn == player_id: self.reset_player_skip(player_skip)
+                if turn == player_id: self.reset_player_skip(player_skip, player_action)
                 player_id_action = self.get_player_action(
                                         player_id, player_card[player_id], player_action[turn], turn)
             else:
                 player_id_action = self.get_player_action_in_skip_condition(
                                         player_id, player_card[player_id], player_action[turn], turn)
             
+            if turn == 0:
+                bomb_beat_other_player -= self.get_bomb_beating_penalty_4_players(turn, player_action[turn], 
+                                                                                player_id, player_id_action)
+
             turn = self.update_player_card_action_skip_turn(player_card, player_action, player_skip, turn,
                                                             player_id, player_id_action)
 
-        return turn
+        return turn, bomb_beat_other_player
     
     def encode_state(self, player_card, player_action, player_skip, turn):
         player_card_encode = tuple(cards for cards in player_card)
         player_action_encode = tuple(cards for cards in player_action[1:])
-        # player_skip_encode = tuple(player_skip[i] for i in range(1, self.n_player + 1))
-        # state = (player_card_encode, player_action_encode, turn)
-        state = player_card_encode + player_action_encode + (turn,)
+        state = player_card_encode + player_action_encode + tuple(player_skip) + (turn,)
         return state
+
+    def get_bomb_beating_penalty_4_players(self, previous_player_id, previous_action, 
+                                                    current_player_id, current_action):
+        if previous_player_id == current_player_id:
+            return 0
+        if isinstance(previous_action, int) or isinstance(current_action, int):
+            return 0
+        bomb_beating_penalty = self.reward.get_bomb_beating_penalty(previous_action, current_action)
+        return 4 if bomb_beating_penalty > 0 else 0
 
     def recursive_depth_first_search(self, env, player_card, player_action, player_skip, turn):
         if not player_card[0] or all(not cards for cards in player_card[1:]):
@@ -145,72 +161,66 @@ class Bot_Simulation(object):
         if state in env: return
         
         list_valid_action_player0 = self.get_list_valid_action_of_first_player(
-                                        0, player_card[0], player_action[turn], turn, player_skip)
+                                        0, player_card[0], player_action, turn, player_skip)
         for valid_action_player0 in list_valid_action_player0:
             next_player_card = player_card.copy()
             next_player_action = player_action.copy()
             next_player_skip = player_skip.copy()
 
+            bomb_beat_player0 = self.get_bomb_beating_penalty_4_players(turn, player_action[turn],
+                                                                        0, valid_action_player0)
+
             next_turn = self.update_player_card_action_skip_turn(next_player_card, next_player_action, next_player_skip, 
                                                                 turn, 0, valid_action_player0)
 
-            next_turn = self.run_round_for_other_players(
+            next_turn, bomb_beat_other_player = self.run_round_for_other_players(
                             next_player_card, next_player_action, next_player_skip, next_turn)
             
             next_state = self.encode_state(next_player_card, next_player_action, next_player_skip, next_turn)
-            reward = self.reward.get_reward_more_than_2_players(next_player_card)
-            env[state][valid_action_player0] = (next_state, reward)
+            reward = self.reward.get_reward_more_than_2_players(next_player_card) + \
+                        bomb_beat_player0 + bomb_beat_other_player
+            terminated = not next_player_card[0] or all(not cards for cards in next_player_card[1:])
+            env[state][valid_action_player0] = (next_state, reward, terminated)
             self.recursive_depth_first_search(env, next_player_card, next_player_action, next_player_skip, next_turn)
  
-    def build_env(self, player_card, who_play_first):
-        player_action = [()] * self.n_player
-        player_skip = [False] * self.n_player
-        turn = who_play_first
-        if who_play_first != 0:
-            turn = self.run_round_for_other_players(
-                        player_card, player_action, player_skip, turn, player_id_start=who_play_first)
+    # def build_env(self, player_card, who_play_first):
+    #     player_action = [()] * self.n_player
+    #     player_skip = [False] * self.n_player
+    #     turn = who_play_first
+    #     if who_play_first != 0:
+    #         turn = self.run_round_for_other_players(
+    #                     player_card, player_action, player_skip, turn, player_id_start=who_play_first)
+
+    #     env = defaultdict(dict)
+    #     self.recursive_depth_first_search(env, player_card, player_action, player_skip, turn)
+    #     return env
+
+    def decode_state(self, state):
+        assert len(state) == 3 * self.n_player
+        player_card = list(state[:self.n_player])
+        player_action = [()] + list(state[self.n_player:2*self.n_player-1])
+        player_skip = list(state[2*self.n_player-1:3*self.n_player-1])
+        turn = state[-1]
+        assert all(isinstance(x, bool) for x in player_skip), \
+                f"player_skip must be all boolean: {player_skip}"
+        assert 0 <= turn < 4, f"turn must be in range [0,4): {turn}"
+        return player_card, player_action, player_skip, turn
+
+    def build_env(self, state, other_player_card):
+        player_card, player_action, player_skip, turn = self.decode_state(state)
+        player_card[1:] = other_player_card
 
         env = defaultdict(dict)
         self.recursive_depth_first_search(env, player_card, player_action, player_skip, turn)
-        return env
+        optimal_Q_table = calculate_optimal_Q_table(env)
+        return optimal_Q_table
 
 
-def run_bot_simulation(src_data):
-    bot_simulation = Bot_Simulation()
-    natural_win = NaturalWin()
+def calculate_optimal_Q_table(env):
+    value_table = value_iteration_RAM_optimize(env)
+    optimal_Q_table = extract_optimal_Q_table_RAM_optimize(value_table, env)
+    return optimal_Q_table
 
-    for idx_game in range(10**6):
-        try:
-            full_deck = list(range(52))
-            np.random.shuffle(full_deck)
-            player_card = [
-                tuple(sorted(full_deck[i * 13:(i + 1) * 13]))
-                for i in range(bot_simulation.n_player)
-            ]
-            if any(natural_win.detect_natural_win(cards) for cards in player_card):
-                # print("Natural Win Detected: SKIPPING this game!!!")
-                continue
-                
-            assert len(player_card) == bot_simulation.n_player
-            who_play_first = random.choice(list(range(bot_simulation.n_player)))
-            assert who_play_first <= 3
-            env = bot_simulation.build_env(player_card.copy(), who_play_first)
-            bot_simulation.action_generator.get_list_valid_action.cache_clear()
-            print(f"The length of the env: {len(env):,}")
-        except Exception as e:
-            print(f"\nThe ERRRRRRRROOOOOOOOOOOORRRRRRRRRR occurs:", e)
-            for i in range(len(player_card)):
-                print(f"Player {i} cards: ", end=""); Card.print_pretty_cards(player_card[i])
-            print(f"Player {who_play_first} plays first")
 
 if __name__ == "__main__":
-    n_process = psutil.cpu_count(logical=False) - 1
-    src_data = r"C:\Users\justin.pham\Downloads\tmp"
-
-    print(f"The number of running process: {n_process}")
-    print(f"Finding src_data status: {os.path.exists(src_data)}")
-    os.makedirs(src_data, exist_ok=True)
-    if sys.platform.startswith('win'):
-        freeze_support()
-    with Pool(processes=n_process) as pool:
-        pool.map(run_bot_simulation, [src_data] * n_process)
+    pass

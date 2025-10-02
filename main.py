@@ -14,6 +14,7 @@ import random
 from math import comb
 from more_itertools import split_into
 from itertools import combinations
+from math import ceil
 import gc
 from agent_bot.TL_AI_bot import Bot_TL_AI
 
@@ -158,7 +159,7 @@ class Bot_Simulation(object):
         turn = state[-1]
         assert all(isinstance(x, bool) for x in player_skip), \
                 f"player_skip must be all boolean: {player_skip}"
-        assert 0 <= turn < 4, f"turn must be in range [0,4): {turn}"
+        assert 0 <= turn < self.n_player, f"turn must be in range [0,{self.n_player}): {turn}"
         return player_card, player_action, player_skip, turn
 
     def is_terminated(self, player_card):
@@ -171,6 +172,7 @@ class Bot_Simulation(object):
         if isinstance(previous_action, int) or isinstance(current_action, int):
             return 0
         bomb_beating_penalty = self.reward.get_bomb_beating_penalty(previous_action, current_action)
+        assert bomb_beating_penalty >= 0
         return 4 if bomb_beating_penalty > 0 else 0
 
     def env_transition(self, player_card, player_action, player_skip, turn, valid_action_player0):
@@ -230,16 +232,17 @@ class Bot_Simulation(object):
     def cal_upper_limit_of_reward(self, player_card, last_action, turn):
         n_other_player_playing = self.reward.cal_n_other_player_playing(player_card)
         n_deuce_special_case_other_player = self.reward.count_n_deuce_special_case_other_player(player_card[1:])
+        last_action_deuce_special_case = int(self.is_last_action_is_deuce_or_special_case(last_action, turn))
         n_special_case_player0 = self.reward.count_n_distinct_special_case(player_card[0])
-        assert n_special_case_player0 <= 2
+        assert n_special_case_player0 <= 2 and last_action_deuce_special_case in [0, 1]
 
-        penalized_bomb_beat = n_special_case_player0
-        if n_special_case_player0:
-            if n_deuce_special_case_other_player == 0 and \
-                not self.is_last_action_is_deuce_or_special_case(last_action, turn):
-                penalized_bomb_beat = 0
+        penalized_bomb_beat = min(n_special_case_player0, 
+                                n_deuce_special_case_other_player + last_action_deuce_special_case)
                 
-        penalized_stuck = 1 if n_deuce_special_case_other_player > n_special_case_player0 else 0
+        if n_deuce_special_case_other_player > max(n_special_case_player0 - last_action_deuce_special_case, 0):
+            penalized_stuck = 1
+        else:
+            penalized_stuck = 0
 
         upper_limit = n_other_player_playing + (penalized_bomb_beat * 4) + penalized_stuck
 
@@ -415,12 +418,22 @@ def generate_average_max_reward_for_all_actions_of_state(state, bot_simulation, 
         for action, max_reward in actions_max_reward.items():
             actions_list_max_reward[action].append(max_reward)
 
-        bot_simulation.action_generator.get_list_valid_action.cache_clear()
+        bot_simulation.tl_ai_bot.run_rule_based_bot.cache_clear()
 
     assert len(set(map(len, actions_list_max_reward.values()))) == 1
     actions_average_max_reward = {action: sum(rewards) / len(rewards) 
                                 for action, rewards in actions_list_max_reward.items()}
     return actions_average_max_reward
+
+def filter_state_for_src_data(src_data, env, n_player):
+    src_data_split = src_data.split("_")
+    start_range_idx, end_range_idx = int(src_data_split[-1]), int(src_data_split[-2])
+    set_states = []
+    for key_state in env:
+        len_player_card = [len(key_state[i]) for i in range(n_player)]
+        if min(len_player_card) in range(start_range_idx, end_range_idx+1):
+            set_states.append(key_state)
+    return set_states
 
 def run_bot_simulation(src_data):
     bot_simulation = Bot_Simulation()
@@ -443,9 +456,14 @@ def run_bot_simulation(src_data):
             assert who_play_first <= 3
             env = bot_simulation.build_env(player_card.copy(), who_play_first)
 
-            set_states = list(env.keys())
-            random.shuffle(set_states)
+            set_states = filter_state_for_src_data(src_data, env, bot_simulation.n_player)
+            max_n_state = 10**4
+            if len(set_states) > max_n_state:
+                set_states = random.sample(set_states, max_n_state)
+            else:
+                random.shuffle(set_states)
             del env; gc.collect()
+            
             path_to_folder = create_folder_contain_one_game_data(src_data, idx_game)
             save_the_initial_game_info(path_to_folder, player_card, who_play_first)
             for state_index, state in enumerate(set_states):
@@ -454,10 +472,10 @@ def run_bot_simulation(src_data):
                                                                             bot_simulation, player_card)
                 end_time_cal = time.time()
                 if actions_average_max_reward is None: continue
-                print(f"\nstate = {state}")
-                print(f"player_card = {player_card}")
-                print(f"{actions_average_max_reward}")
-                print(f"The time taken is: {end_time_cal-start_time_cal} seconds")
+                # print(f"\nstate = {state}")
+                # print(f"player_card = {player_card}")
+                # print(f"{actions_average_max_reward}")
+                # print(f"The time taken is: {end_time_cal-start_time_cal} seconds")
                 write_data_to_file(path_to_folder, state_index, state, actions_average_max_reward)
 
         except Exception as e:
@@ -466,14 +484,23 @@ def run_bot_simulation(src_data):
                 print(f"Player {i} cards: ", end=""); Card.print_pretty_cards(player_card[i])
             print(f"Player {who_play_first} plays first")
 
+
 if __name__ == "__main__":
+    def divide_job(n_process, src_data):
+        n_src_data_idx_0 = int(0.5 * n_process)
+        n_src_data_idx_1 = ceil(0.5 * (n_process - n_src_data_idx_0))
+        n_src_data_idx_2 = n_process - n_src_data_idx_0 - n_src_data_idx_1
+        return n_src_data_idx_0 * [src_data[0]] + \
+                n_src_data_idx_1 * [src_data[1]] + \
+                n_src_data_idx_2 * [src_data[2]]
+
     n_process = psutil.cpu_count(logical=False) - 1
-    src_data = r"C:\Users\justin.pham\Downloads\tmp"
+    src_data = [r"\\10.18.200.241\public\aibot\data_full_13_11",
+                r"\\10.18.200.241\public\aibot\data_full_10_8",
+                r"\\10.18.200.241\public\aibot\data_full_7_5"]
 
     print(f"The number of running process: {n_process}")
-    print(f"Finding src_data status: {os.path.exists(src_data)}")
-    os.makedirs(src_data, exist_ok=True)
     if sys.platform.startswith('win'):
         freeze_support()
     with Pool(processes=n_process) as pool:
-        pool.map(run_bot_simulation, [src_data] * n_process)
+        pool.map(run_bot_simulation, divide_job(n_process, src_data))

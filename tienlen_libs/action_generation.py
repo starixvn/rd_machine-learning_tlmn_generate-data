@@ -4,7 +4,6 @@ from .constant import ComboType
 import time
 import random
 from itertools import chain
-from functools import lru_cache
 
 class ActionGenerator(object):
     
@@ -225,7 +224,6 @@ class ActionGenerator(object):
                                                                         get_triplet=True, 
                                                                         get_quartet=True)
 
-    @lru_cache(maxsize=None)
     def get_list_valid_action(self, my_card, opponent_move_card):
         opponent_move_card = tuple(opponent_move_card)
         frequency_stats = self.utils.stats_frequency_of_card(my_card)
