@@ -31,7 +31,7 @@ class Bot_Simulation_Test(object):
 
     def get_player_action(self, player_id, player_id_card, last_action, turn):
         if turn == player_id:
-            player_action = self.tl_ai_bot.run_rule_based_bot([], player_id_card)
+            player_action = self.tl_ai_bot.run_rule_based_bot((), player_id_card)
         else:
             player_action = self.tl_ai_bot.run_rule_based_bot(last_action, player_id_card)
         return player_action
@@ -212,6 +212,7 @@ class Bot_Simulation_Test(object):
 
         env = defaultdict(dict)
         self.recursive_depth_first_search(env, player_card, player_action, player_skip, turn)
+        self.tl_ai_bot.run_rule_based_bot.cache_clear()
         optimal_Q_table = calculate_optimal_Q_table(env)
         return optimal_Q_table
 

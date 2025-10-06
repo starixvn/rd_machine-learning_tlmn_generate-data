@@ -115,20 +115,38 @@ class Reward(object):
     
     @staticmethod
     def cal_n_other_player_playing(player_card):
-        return sum(1 for cards in player_card[1:] if len(cards) > 0)
+        count = 0
+        for cards in player_card[1:]:
+            if cards:
+                count += 1
+        return count
 
     @classmethod
     def count_n_deuce_special_case_other_player(cls, other_player_card):
         assert len(other_player_card) in [1, 3], f"other_player_card = {other_player_card}"
-        """
-        For performance, we check deuce first, then check special_case later.
-        The function count_n_distinct_special_case is more expensive
-        """
         n = 0
         for cards in other_player_card:
             n += cls.count_n_deuce_in_card(cards)
             n += cls.count_n_distinct_special_case(cards)
         return n
+
+    @classmethod
+    def exist_deuce_special_case_other_player(cls, other_player_card):
+        assert len(other_player_card) in [1, 3], f"other_player_card = {other_player_card}"
+        """
+        For performance, we check deuce first, then check special_case later.
+        The function count_n_distinct_special_case is more expensive
+        """
+        for cards in other_player_card:
+            for c in cards:
+                if c >= 48:
+                    return True
+        
+        for cards in other_player_card:
+            if cls.count_n_distinct_special_case(cards) > 0:
+                return True
+
+        return False
 
     @classmethod
     def get_reward_more_than_2_players(cls, player_card):
@@ -137,12 +155,12 @@ class Reward(object):
         if len_player0_card == 0:
             assert n_other_player_playing > 0, f"{n_other_player_playing} is not > 0"
             r = n_other_player_playing
-            if cls.count_n_deuce_special_case_other_player(player_card[1:]) > 0:
+            if cls.exist_deuce_special_case_other_player(player_card[1:]):
                 r += 1
         else:
             r = 0
             if n_other_player_playing == 0:
-                if cls.count_n_deuce_special_case_other_player(player_card[:1]) > 0:
+                if cls.exist_deuce_special_case_other_player(player_card[:1]):
                     r -= 1
 
         return r
@@ -195,7 +213,11 @@ class Reward(object):
 
     @staticmethod
     def count_n_deuce_in_card(player_card):
-        return sum(c >= 48 for c in player_card)
+        n_deuce = 0
+        for c in player_card:
+            if c >= 48:
+                n_deuce += 1
+        return n_deuce
 
     @classmethod
     def count_n_distinct_special_case(cls, player_card):

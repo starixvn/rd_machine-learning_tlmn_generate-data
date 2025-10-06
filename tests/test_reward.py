@@ -109,6 +109,7 @@ def test_cal_total_bomb_beating_reward(reward, input, expected):
     ([0, 1, 2, 3, 50, 51], 2),
     ([0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 2], 0),
     ([0, 10, 20, 30, 40], 0),
+    ([0, 11, 22, 30, 48, 49, 50, 51], 4),
 ])
 def test_count_n_deuce_in_card(reward, input, expected):
     assert reward.count_n_deuce_in_card(input) == expected
@@ -184,6 +185,9 @@ def test_count_n_distinct_special_case(reward, input, expected):
     ([(2,), (3,), (), ()], 1),
     ([(2,), (3,), (4,), ()], 2),
     ([(2,), (3,), (4,), (5,)], 3),
+    ([(2, 10), (3,), (), ()], 1),
+    ([(2, 12), (3,), (4,), ()], 2),
+    ([(2, 20), (3,), (4,), (5, 6, 7)], 3),
     ([(), (3,), (), ()], 1),
     ([(), (3,), (4,), ()], 2),
     ([(), (3,), (4,), (5,)], 3),
@@ -198,6 +202,9 @@ def test_cal_n_other_player_playing(reward, input, expected):
     (["2s", "2c", "2d 2h"], 4),
     (["2s 4s 4c 4d 4h", "2c", "2d 2h"], 5),
     (["2s 4s 4c 5d 5h 6s 6h", "2c 2h", "2d 8s 8c 8d 8h"], 6),
+    (["5d 5h 6s 6h 7s 7d", "3c 4d 5h", "3s 4s Ah"], 1),
+    (["As Ad Ah", "3c 4d 5h", "5d 5h 6s 6h 7s 7d"], 1),
+    (["As Ad Ah", "5d 5h 6s 6h 7s 7d", "Ks Kh"], 1),
     (["4s", "5s", "8s"], 0),
     (["", "", ""], 0),
     (["4s", "", "8s"], 0),
@@ -208,6 +215,26 @@ def test_cal_n_other_player_playing(reward, input, expected):
 def test_count_n_deuce_special_case_other_player(reward, input, expected):
     other_player_card = [tuple(Card.new(elem) for elem in card_str.split()) for card_str in input]
     assert reward.count_n_deuce_special_case_other_player(other_player_card) == expected
+
+
+@pytest.mark.parametrize("input, expected", 
+[
+    (["2s", "2c", "2d 2h"], True),
+    (["2s 4s 4c 4d 4h", "2c", "2d 2h"], True),
+    (["2s 4s 4c 5d 5h 6s 6h", "2c 2h", "2d 8s 8c 8d 8h"], True),
+    (["5d 5h 6s 6h 7s 7d", "3c 4d 5h", "3s 4s Ah"], True),
+    (["As Ad Ah", "3c 4d 5h", "5d 5h 6s 6h 7s 7d"], True),
+    (["As Ad Ah", "5d 5h 6s 6h 7s 7d", "Ks Kh"], True),
+    (["4s", "5s", "8s"], False),
+    (["", "", ""], False),
+    (["4s", "", "8s"], False),
+    (["", "", "8s"], False),
+    (["4s", "", ""], False),
+    (["5c", "6h", ""], False),
+])
+def test_exist_deuce_special_case_other_player(reward, input, expected):
+    other_player_card = [tuple(Card.new(elem) for elem in card_str.split()) for card_str in input]
+    assert reward.exist_deuce_special_case_other_player(other_player_card) == expected
 
 
 @pytest.mark.parametrize("input, expected", 

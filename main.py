@@ -13,7 +13,7 @@ import numpy as np
 import random
 from math import comb
 from more_itertools import split_into
-from itertools import combinations
+from itertools import combinations, islice
 from math import ceil
 import gc
 from agent_bot.TL_AI_bot import Bot_TL_AI
@@ -46,18 +46,12 @@ class Bot_Simulation(object):
 
     def update_player_card_and_player_skip(self, player_card, player_skip, 
                                            player_id, player_id_action):
-        if len(player_id_action) > 0:                
+        if player_id_action:                
             player_card[player_id] = self.remove_list_card_from_player_card(
                                         player_card[player_id], player_id_action)
             player_skip[player_id] = False
         else:
             player_skip[player_id] = True
-
-    def update_turn(self, player_id, player_id_action, current_turn):
-        turn = current_turn
-        if len(player_id_action) > 0:
-            turn = player_id
-        return turn
 
     def get_list_valid_action_of_player(self, player_id, player_id_card, last_action, turn):
         if turn == player_id:
@@ -105,7 +99,8 @@ class Bot_Simulation(object):
         player_action[player_id] = player_id_action
         if player_id_action != self.skip_int_encode:
             self.update_player_card_and_player_skip(player_card, player_skip, player_id, player_id_action)
-            turn = self.update_turn(player_id, player_id_action, turn)
+            if player_id_action:
+                turn = player_id
         return turn
 
     def move_to_next_turn(self, turn):
@@ -144,12 +139,10 @@ class Bot_Simulation(object):
         return turn, bomb_beat_other_player
     
     def encode_state(self, player_card, player_action, player_skip, turn):
-        player_card_encode = tuple(cards for cards in player_card)
-        player_action_encode = tuple(cards for cards in player_action[1:])
-        # state = (player_card_encode, player_action_encode, turn)
-        # state = player_card_encode + player_action_encode + (turn,)
-        state = player_card_encode + player_action_encode + tuple(player_skip) + (turn,)
-        return state
+        return (*player_card,
+                *islice(player_action, 1, None),
+                *player_skip,
+                turn)
 
     def decode_state(self, state):
         assert len(state) == 3 * self.n_player
@@ -163,7 +156,12 @@ class Bot_Simulation(object):
         return player_card, player_action, player_skip, turn
 
     def is_terminated(self, player_card):
-        return not player_card[0] or all(not cards for cards in player_card[1:])
+        if not player_card[0]:
+            return True
+        for i in range(1, self.n_player):
+            if player_card[i]:  # non-empty hand
+                return False
+        return True
 
     def get_bomb_beating_penalty_4_players(self, previous_player_id, previous_action, 
                                                     current_player_id, current_action):
@@ -213,10 +211,13 @@ class Bot_Simulation(object):
                 self.env_transition(player_card, player_action, player_skip, turn, valid_action_player0)
 
             next_cumsum_bomb_beat = cumsum_bomb_beat + bomb_beat_in_round
-        
-            next_state = self.encode_state(next_player_card, next_player_action, next_player_skip, next_turn)
-            reward = self.reward.get_reward_more_than_2_players(next_player_card) + bomb_beat_in_round
-            env[state][valid_action_player0] = (next_state, reward)
+
+            if not traverse_all:
+                next_state = self.encode_state(next_player_card, next_player_action, next_player_skip, next_turn)
+                reward = self.reward.get_reward_more_than_2_players(next_player_card) + bomb_beat_in_round
+                env[state][valid_action_player0] = (next_state, reward)
+            else:
+                env.add(state)
             self.recursive_depth_first_search(env, next_player_card, next_player_action, next_player_skip, next_turn,
                                             reward_info, traverse_all, next_cumsum_bomb_beat)
 
@@ -252,7 +253,7 @@ class Bot_Simulation(object):
         if state in memo:
             return memo[state]
 
-        if self.is_terminated(state[:self.n_player]):
+        if self.is_terminated(state):
             return 0
 
         max_return = float('-inf')
@@ -313,7 +314,7 @@ class Bot_Simulation(object):
             turn, _ = self.run_round_for_other_players(
                         player_card, player_action, player_skip, turn, player_id_start=who_play_first)
 
-        env = defaultdict(dict)
+        env = set()
         reward_info = {"max": float('-inf'),
                        "upper_limit": float('-inf')}
         self.recursive_depth_first_search(env, player_card, player_action, player_skip, turn,

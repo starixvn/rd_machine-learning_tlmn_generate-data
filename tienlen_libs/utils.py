@@ -84,45 +84,30 @@ class Utils:
 
     @staticmethod
     def compare_two_single_card(single_card_1: tuple[Card], single_card_2: tuple[Card]) -> bool:
-        assert len(single_card_1) == len(single_card_2) == 1, \
-            f"Single card must be a single card {single_card_1} and {single_card_2}"
         return single_card_1[0] > single_card_2[0]
 
     @staticmethod
     def compare_special_card_with_single_deuce(special_card: tuple[Card], single_deuce: tuple[Card]) -> bool:
-        assert Utils.get_combo_type(special_card) in [ComboType.SINGLE, ComboType.SINGLE_DEUCE,
-                                                      ComboType.QUARTET, ComboType.DOUBLE_SEQUENCE_THREE,
-                                                      ComboType.DOUBLE_SEQUENCE_FOUR], \
-            f"Special card invalid: {special_card}"
         if len(special_card) == 1: 
             return Utils.compare_two_single_card(special_card, single_deuce)
         return True
     
     @staticmethod
     def compare_special_card_with_pair_deuce(special_card: tuple[Card], pair_deuce: tuple[Card]) -> bool:
-        assert Utils.get_combo_type(special_card) in [ComboType.PAIR, ComboType.PAIR_DEUCE,
-                                                      ComboType.QUARTET, ComboType.DOUBLE_SEQUENCE_FOUR], \
-            f"Special card invalid: {special_card}"
         if len(special_card) == 2:
             return Utils.compare_two_pair_cards(special_card, pair_deuce)
         return True
 
     @staticmethod
     def compare_two_pair_cards(pair_1: tuple[Card], pair_2: tuple[Card]) -> bool:
-        assert len(pair_1) == len(pair_2) == 2, \
-            f"Pair cards must be a pair of cards {pair_1} and {pair_2}"
-        assert max(pair_1) == pair_1[-1] and max(pair_2) == pair_2[-1]
         return pair_1[-1] > pair_2[-1]
 
     @staticmethod
     def compare_two_triplet_quartet_cards(cards_1: tuple[Card], cards_2: tuple[Card]) -> bool:
-        assert len(cards_1) == len(cards_2) == 3 or len(cards_1) == len(cards_2) == 4
         return cards_1[0] > cards_2[0]
 
     @staticmethod
     def compare_special_card_with_quartet(special_card: tuple[Card], quartet: tuple[Card]) -> bool:
-        assert Utils.get_combo_type(special_card) in [ComboType.QUARTET, ComboType.DOUBLE_SEQUENCE_FOUR], \
-            f"Special card invalid: {special_card}"
         if len(special_card) == 4:
             return Utils.compare_two_triplet_quartet_cards(special_card, quartet)
         return True
@@ -130,15 +115,11 @@ class Utils:
     @staticmethod
     def compare_two_sequence(cards_1: tuple[Card], cards_2: tuple[Card]) -> bool:
         if len(cards_1) != len(cards_2): return False
-        assert max(cards_1) == cards_1[-1] and max(cards_2) == cards_2[-1]
         return cards_1[-1] > cards_2[-1]
     
     @staticmethod
     def compare_special_card_with_double_sequence_three(special_card: tuple[Card], 
                                                         double_sequence_three: tuple[Card]) -> bool:
-        assert Utils.get_combo_type(special_card) in [ComboType.QUARTET, ComboType.DOUBLE_SEQUENCE_THREE,
-                                                      ComboType.DOUBLE_SEQUENCE_FOUR], \
-            f"Special card invalid: {special_card}"
         if len(special_card) == 6:
             return Utils.compare_two_sequence(special_card, double_sequence_three)
         return True
@@ -146,7 +127,6 @@ class Utils:
     @staticmethod
     def compare_special_card_with_double_sequence_four(special_card: tuple[Card], 
                                                        double_sequence_four: tuple[Card]) -> bool:
-        assert Utils.get_combo_type(special_card) == ComboType.DOUBLE_SEQUENCE_FOUR
         return Utils.compare_two_sequence(special_card, double_sequence_four)
 
     @staticmethod
