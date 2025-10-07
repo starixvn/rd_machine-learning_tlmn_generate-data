@@ -343,7 +343,7 @@ def save_the_initial_game_info(path_to_folder, player_card, who_play_first):
     initial_game_info = {
         "player_card": player_card,
         "who_play_first": who_play_first,
-        "version": "medium_mode",
+        "version": "medium_mode_fixed",
     }
     with open(path_to_file, "wb") as f:
         pickle.dump(initial_game_info, f, protocol=pickle.HIGHEST_PROTOCOL)
