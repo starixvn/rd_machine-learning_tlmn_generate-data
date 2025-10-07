@@ -61,7 +61,8 @@ class Bot_Simulation(object):
         return list_valid_action
     
     def is_deuce_or_pair_deuce(self, player_id_action):
-        return self.utils.get_combo_type(player_id_action) in [ComboType.SINGLE_DEUCE, ComboType.PAIR_DEUCE]
+        n = len(player_id_action)
+        return (n == 1 or n == 2) and Card.get_rank_int(player_id_action[0]) == 12
     
     def get_list_valid_action_in_skip_condition(self, player_id, player_id_card, last_action, turn):
         assert turn != player_id, f"turn = {turn}, player_id = {player_id}"

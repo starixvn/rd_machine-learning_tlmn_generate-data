@@ -53,11 +53,11 @@ class Card:
 
     @staticmethod
     def get_rank_int(card_int: int) -> int:
-        return card_int // 4
+        return card_int >> 2
 
     @staticmethod
     def get_suit_int(card_int: int) -> int:
-        return card_int % 4
+        return card_int & 0b11
 
     @staticmethod
     def int_to_pretty_str(card_int: int) -> str:
