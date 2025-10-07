@@ -397,7 +397,7 @@ def generate_random_card_for_each_remain_player(state, origin_player_card):
         while n_yield < max_n_iter:
             np.random.shuffle(deck_remain)
             other_player_card = [tuple(sorted(x)) for x in split_into(deck_remain, len_other_player_card)]
-            if any(natural_win.detect_natural_win(other_player_card[i] + other_player_action_cards[i]) 
+            if any(natural_win.detect_natural_win(sorted(other_player_card[i] + other_player_action_cards[i])) 
                     for i in range(n_player-1)): 
                 continue
             yield other_player_card
@@ -405,7 +405,7 @@ def generate_random_card_for_each_remain_player(state, origin_player_card):
     else:
         for partition in partition_by_sizes(deck_remain, len_other_player_card):
             other_player_card = [tuple(sorted(x)) for x in partition]
-            if any(natural_win.detect_natural_win(other_player_card[i] + other_player_action_cards[i]) 
+            if any(natural_win.detect_natural_win(sorted(other_player_card[i] + other_player_action_cards[i])) 
                     for i in range(n_player-1)): 
                 continue
             yield other_player_card
