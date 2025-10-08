@@ -391,8 +391,8 @@ def generate_random_card_for_each_remain_player(state, origin_player_card):
 
     natural_win = NaturalWin()
     max_n_iter = 1000
-    n_iter = min(max_n_iter, cal_total_n_combination(len(deck_remain), len_other_player_card))
-    if n_iter == max_n_iter:
+    n_combination = cal_total_n_combination(len(deck_remain), len_other_player_card)
+    if n_combination >= (2*max_n_iter):
         n_yield = 0
         while n_yield < max_n_iter:
             np.random.shuffle(deck_remain)
