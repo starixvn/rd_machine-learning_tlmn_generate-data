@@ -1,6 +1,8 @@
 from .card import Card
 from .constant import ComboType
 from collections import defaultdict
+from math import comb
+from itertools import combinations
 
 
 class Utils:
@@ -22,26 +24,14 @@ class Utils:
     }
 
     def __init__(self):
-
-        self.compare_two_combo_function = {
-            ComboType.SINGLE: self.compare_two_single_card,
-            ComboType.SINGLE_DEUCE: self.compare_special_card_with_single_deuce,
-            ComboType.PAIR: self.compare_two_pair_cards,
-            ComboType.PAIR_DEUCE: self.compare_special_card_with_pair_deuce,
-            ComboType.TRIPLET: self.compare_two_triplet_quartet_cards,
-            ComboType.QUARTET: self.compare_special_card_with_quartet,
-            ComboType.SEQUENCE: self.compare_two_sequence,
-            ComboType.DOUBLE_SEQUENCE_THREE: self.compare_special_card_with_double_sequence_three,
-            ComboType.DOUBLE_SEQUENCE_FOUR: self.compare_special_card_with_double_sequence_four,
-            ComboType.PASS: self.compare_two_pass,
-        }
+        pass
 
     @staticmethod
     def sort_cards(cards):
         return sorted(cards)
     
-    @staticmethod
-    def get_combo_type(cards):
+    @classmethod
+    def get_combo_type(cls, cards):
         n_cards = len(cards)
 
         if n_cards == 0:
@@ -57,14 +47,14 @@ class Utils:
             if n_cards == 2 and set_rank_int == {12}:
                 return ComboType.PAIR_DEUCE
             else:   
-                return Utils.mapping_len_to_type[n_cards]
+                return cls.mapping_len_to_type[n_cards]
         else:
             if n_unique_rank == n_cards:
                 return ComboType.SEQUENCE
             else:
                 assert 2 * n_unique_rank == n_cards, \
                     f"Invalid number of unique rank: {n_unique_rank} for {cards}"
-                return Utils.mapping_len_to_double_sequence[n_cards]
+                return cls.mapping_len_to_double_sequence[n_cards]
             
     @classmethod
     def get_int_combo_type(cls, cards):
@@ -83,55 +73,29 @@ class Utils:
         return frequency_stats
 
     @staticmethod
-    def compare_two_single_card(single_card_1: tuple[Card], single_card_2: tuple[Card]) -> bool:
-        return single_card_1[0] > single_card_2[0]
+    def is_deuce_or_pair_deuce(action):
+        n = len(action)
+        return (n == 1 or n == 2) and Card.get_rank_int(action[0]) == 12
 
     @staticmethod
-    def compare_special_card_with_single_deuce(special_card: tuple[Card], single_deuce: tuple[Card]) -> bool:
-        if len(special_card) == 1: 
-            return Utils.compare_two_single_card(special_card, single_deuce)
-        return True
-    
-    @staticmethod
-    def compare_special_card_with_pair_deuce(special_card: tuple[Card], pair_deuce: tuple[Card]) -> bool:
-        if len(special_card) == 2:
-            return Utils.compare_two_pair_cards(special_card, pair_deuce)
-        return True
+    def cal_total_n_combination(len_deck_remain, len_other_player_card):
+        n = len_deck_remain
+        assert sum(len_other_player_card) == n, \
+                f"len_other_player_card = {len_other_player_card}, n = {n}"
+        result = 1
+        for k in len_other_player_card[:-1]:
+            result *= comb(n, k)
+            n -= k
+        return result
 
-    @staticmethod
-    def compare_two_pair_cards(pair_1: tuple[Card], pair_2: tuple[Card]) -> bool:
-        return pair_1[-1] > pair_2[-1]
+    @classmethod
+    def partition_by_sizes(cls, iterable, sizes): 
+        if not sizes:
+            yield []
+            return
 
-    @staticmethod
-    def compare_two_triplet_quartet_cards(cards_1: tuple[Card], cards_2: tuple[Card]) -> bool:
-        return cards_1[0] > cards_2[0]
-
-    @staticmethod
-    def compare_special_card_with_quartet(special_card: tuple[Card], quartet: tuple[Card]) -> bool:
-        if len(special_card) == 4:
-            return Utils.compare_two_triplet_quartet_cards(special_card, quartet)
-        return True
-
-    @staticmethod
-    def compare_two_sequence(cards_1: tuple[Card], cards_2: tuple[Card]) -> bool:
-        if len(cards_1) != len(cards_2): return False
-        return cards_1[-1] > cards_2[-1]
-    
-    @staticmethod
-    def compare_special_card_with_double_sequence_three(special_card: tuple[Card], 
-                                                        double_sequence_three: tuple[Card]) -> bool:
-        if len(special_card) == 6:
-            return Utils.compare_two_sequence(special_card, double_sequence_three)
-        return True
-
-    @staticmethod
-    def compare_special_card_with_double_sequence_four(special_card: tuple[Card], 
-                                                       double_sequence_four: tuple[Card]) -> bool:
-        return Utils.compare_two_sequence(special_card, double_sequence_four)
-
-    @staticmethod
-    def compare_two_pass(*args) -> bool:
-        return True
-
-    def compare(self, cards_1: tuple[Card], cards_2: tuple[Card], combo_type: ComboType) -> bool:
-        return self.compare_two_combo_function[combo_type](cards_1, cards_2)
+        first_size, *rest_sizes = sizes
+        for first_group in combinations(iterable, first_size):
+            remaining = set(iterable) - set(first_group)
+            for rest_partition in cls.partition_by_sizes(remaining, rest_sizes):
+                yield [first_group] + rest_partition

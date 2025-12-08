@@ -1,6 +1,5 @@
 from py_mini_racer import py_mini_racer
 from agent_bot.py_rule_based import rule_based_json_code
-from functools import lru_cache
 
 
 class Bot_TL_AI(object):
@@ -72,7 +71,6 @@ class Bot_TL_AI(object):
     def convert_rule_based_bot_list_input_to_list_card(self, bot_list_input):
         return [self.map_rule_based_bot_input_to_card[bot_input] for bot_input in bot_list_input]
 
-    @lru_cache(maxsize=5000)
     def run_rule_based_bot(self, opponent_move, my_card):
         assert list(opponent_move) == sorted(opponent_move)
         assert list(my_card) == sorted(my_card)
